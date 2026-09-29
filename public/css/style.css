@@ -1,0 +1,22 @@
+/* ==================================================================
+   MUBS JOBS PORTAL — STYLESHEET ENTRY POINT
+   ------------------------------------------------------------------
+   This file only imports modular partials. No rules live here.
+   Load order matters: base first, utilities last.
+   ================================================================== */
+
+@import url("./modules/base.css");
+@import url("./modules/header.css");
+@import url("./modules/footer.css");
+@import url("./modules/buttons.css");
+@import url("./modules/alerts.css");
+@import url("./modules/forms.css");
+@import url("./modules/hero.css");
+@import url("./modules/cards.css");
+@import url("./modules/jobs.css");
+@import url("./modules/applications.css");
+@import url("./modules/tables.css");
+@import url("./modules/auth.css");
+@import url("./modules/modal.css");
+@import url("./modules/admin.css");
+@import url("./modules/utilities.css");

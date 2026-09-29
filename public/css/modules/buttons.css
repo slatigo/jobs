@@ -1,0 +1,100 @@
+/* ==================================================================
+   BUTTONS
+   ================================================================== */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  border: none;
+  transition: var(--transition);
+  font-family: inherit;
+  white-space: nowrap;
+}
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover {
+  background: var(--primary-dark);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--primary);
+  border: 1.5px solid var(--primary);
+}
+.btn-outline:hover { background: var(--primary); color: #fff; }
+
+.btn-ghost { background: transparent; color: var(--gray-700); }
+.btn-ghost:hover { background: var(--gray-100); }
+
+.btn-white { background: #fff; color: var(--primary); }
+.btn-white:hover { background: var(--gray-100); }
+
+.btn-outline-white {
+  background: transparent;
+  color: #fff;
+  border: 1.5px solid #fff;
+}
+.btn-outline-white:hover { background: rgba(255,255,255,.15); }
+
+.btn-success { background: var(--success); color: #fff; }
+.btn-success:hover {
+  background: #059669;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+
+.btn-danger { background: #dc2626; color: #fff; }
+.btn-danger:hover {
+  background: #b91c1c;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+
+.btn-block { width: 100%; justify-content: center; }
+.btn-sm { padding: 8px 14px; font-size: 13px; }
+
+/* Icon buttons (used in tables / quick actions) */
+.icon-btn {
+  width: 32px; height: 32px;
+  border: 1.5px solid var(--gray-200);
+  background: #fff;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gray-600);
+  cursor: pointer;
+  transition: var(--transition);
+  font-size: 13px;
+  padding: 0;
+}
+.icon-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--gray-50);
+}
+.icon-btn-info:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: #dbeafe;
+}
+.icon-btn-success:hover {
+  border-color: var(--success);
+  color: #fff;
+  background: var(--success);
+}
+.icon-btn-danger:hover {
+  border-color: var(--danger);
+  color: #fff;
+  background: var(--danger);
+}
+.icon-btn-toggle { color: var(--gray-400); }
+.icon-btn-toggle.open i { transform: rotate(180deg); }
+.icon-btn-toggle i { transition: transform .2s; }

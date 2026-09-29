@@ -1,0 +1,110 @@
+extends ../layout
+
+block head
+  link(rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css")
+
+block content
+  section.page-header
+    .container
+      h1 Post a New Position
+      p Fill in the details below to publish a vacancy at MUBS
+
+  section.form-section
+    .container
+      .form-card
+        form(action="/jobs" method="POST" id="jobForm")
+          input(type="hidden" name="description" id="descriptionInput")
+
+          .form-row
+            .form-group
+              label Job Reference
+              input(type="text" name="jobRef" placeholder="e.g. MUBS/HR/2025/001")
+            .form-group
+              label Position Title *
+              input(type="text" name="title" required placeholder="e.g. School Bursar")
+
+          .form-row
+            .form-group
+              label Department / Faculty *
+              select(name="departmentId" required)
+                option(value="" disabled selected) Select department...
+                each d in departments
+                  option(value=d.id)= d.name
+            .form-group
+              label Grade
+              input(type="text" name="grade" placeholder="e.g. M3, M5, M7")
+
+          .form-row
+            .form-group
+              label Job Type *
+              select(name="type" required)
+                each t in JOB_TYPES
+                  option(value=t)= t
+            .form-group
+              label Contract Terms *
+              select(name="contractTerms" required)
+                each c in CONTRACT_TERMS
+                  option(value=c)= c
+
+          .form-row
+            .form-group
+              label Duty Station
+              input(type="text" name="location" value="MUBS Main Campus, Nakawa")
+            .form-group
+              label Number of Vacancies
+              input(type="number" name="vacancies" value="1" min="1")
+
+          .form-row
+            .form-group
+              label Application Deadline *
+              input(type="date" name="deadline" required)
+            .form-group
+              label Contact Email *
+              input(type="email" name="contactEmail" required placeholder="hr@mubs.ac.ug")
+
+          .form-group
+            label Contact Phone
+            input(type="tel" name="contactPhone" placeholder="+256 414 505 200")
+
+          .form-group
+            label Job Description *
+            small.text-muted Include duties, qualifications, experience, and terms of service
+            #descriptionEditor.editor
+
+          .form-actions
+            a.btn.btn-ghost(href="/jobs") Cancel
+            button.btn.btn-primary(type="submit")
+              i.fas.fa-check
+              | Publish Position
+
+block scripts
+  script(src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js")
+  script.
+    const toolbarOptions = [
+      [{ header: [1, 2, 3, false] }],
+      ['bold', 'italic', 'underline', 'strike'],
+      [{ list: 'ordered' }, { list: 'bullet' }],
+      [{ indent: '-1' }, { indent: '+1' }],
+      ['blockquote', 'code-block'],
+      ['link'],
+      ['clean']
+    ];
+
+    const quill = new Quill('#descriptionEditor', {
+      theme: 'snow',
+      placeholder: 'Describe the position — duties, required qualifications, experience, and terms of service...',
+      modules: { toolbar: toolbarOptions }
+    });
+
+    document.getElementById('jobForm').addEventListener('submit', function (e) {
+      const html = quill.root.innerHTML.trim();
+      const isEmpty = !html || html === '<p><br></p>';
+      if (isEmpty) {
+        e.preventDefault();
+        quill.root.parentElement.classList.add('editor-error');
+        alert('Please provide a job description.');
+        return;
+      }
+      quill.root.parentElement.classList.remove('editor-error');
+      document.getElementById('descriptionInput').value = html;
+    });

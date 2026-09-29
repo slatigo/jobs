@@ -1,0 +1,57 @@
+article.job-card
+  .job-card-header
+    .company-logo= job.department ? job.department.name.charAt(0).toUpperCase() : 'J'
+    - const expired = new Date(job.deadline).getTime() < Date.now()
+    - const daysLeft = Math.ceil((new Date(job.deadline) - Date.now()) / 86400000)
+    if expired || job.status === 'closed'
+      span.badge.badge-closed
+        i.fas.fa-lock
+        | Closed
+    else if daysLeft <= 3
+      span.badge.badge-urgent
+        i.fas.fa-hourglass-half
+        | #{daysLeft === 0 ? 'Last day' : daysLeft + 'd left'}
+    else if job.featured
+      span.badge.badge-featured
+        i.fas.fa-star
+        | Featured
+
+  .job-card-body
+    h3.job-title
+      a(href=`/jobs/${job.id}`)= job.title
+
+    p.job-company
+      i.fas.fa-university
+      = job.department ? job.department.name : 'MUBS'
+
+    if job.jobRef
+      p.job-ref Ref: #{job.jobRef}
+
+    .job-meta
+      span
+        i.fas.fa-clock
+        = job.type
+      span
+        i.fas.fa-file-contract
+        = job.contractTerms
+      span
+        i.fas.fa-map-marker-alt
+        = job.location
+
+    .job-tags
+      if job.grade
+        span.tag Grade #{job.grade}
+      span.tag= job.vacancies + ' position' + (job.vacancies > 1 ? 's' : '')
+
+  .job-card-footer
+    span.posted
+      i.fas.fa-calendar
+      = new Date(job.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+
+    //- Admin / poster sees application count
+    if (typeof isAdmin !== 'undefined' && isAdmin)
+      span.application-count
+        i.fas.fa-users
+        = (job.applicationCount || 0) + ' application' + (parseInt(job.applicationCount) === 1 ? '' : 's')
+
+    a.btn.btn-sm.btn-primary(href=`/jobs/${job.id}`) View Details

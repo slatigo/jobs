@@ -1,0 +1,42 @@
+{
+  "name": "mubsjobs",
+  "version": "1.0.0",
+  "description": "MUBS Job Portal - Node.js/Express/Pug/MySQL",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js",
+    "db:sync": "node scripts/sync.js",
+    "db:seed": "node scripts/seed.js",
+    "db:seed:depts": "node scripts/seed-departments.js",
+    "db:reset": "node scripts/reset.js"
+  },
+  "keywords": [
+    "mubs",
+    "jobs",
+    "portal",
+    "nodejs",
+    "mysql"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "connect-flash": "^0.1.1",
+    "connect-session-sequelize": "^8.0.6",
+    "csv-parse": "^7.0.3",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.1",
+    "express-session": "^1.19.0",
+    "method-override": "^3.0.0",
+    "multer": "^2.4.0",
+    "mysql2": "^3.24.4",
+    "pug": "^3.0.4",
+    "sanitize-html": "^2.17.7",
+    "sequelize": "^6.37.8"
+  }
+}

@@ -1,0 +1,35 @@
+extends ../layout
+
+block content
+  section.page-header
+    .container
+      h1 Departments & Faculties
+      p Explore MUBS organisational units and their open vacancies
+
+  section.departments-page
+    .container
+      if groups && Object.keys(groups).length
+        each list, type in groups
+          .department-section
+            h2.section-title-sm= type + 's'
+            .department-grid
+              each d in list
+                a.department-card(href=`/departments/${d.slug}`)
+                  .department-card-head
+                    .department-badge
+                      i.fas.fa-university
+                    if d.shortName
+                      span.dept-short= d.shortName
+                  h3.department-name= d.name
+                  if d.description
+                    p.department-desc= d.description
+                  .department-footer
+                    span.job-count
+                      i.fas.fa-briefcase
+                      = d.jobCount + ' open position' + (d.jobCount === 1 ? '' : 's')
+                    span.view-link View →
+      else
+        .empty-state
+          i.fas.fa-university
+          h3 No departments yet
+          p Departments will appear here once they are seeded.

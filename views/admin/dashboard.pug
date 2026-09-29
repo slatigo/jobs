@@ -1,0 +1,35 @@
+extends ../layout
+
+block content
+  section.page-header
+    .container
+      h1 Admin Dashboard
+      p Overview of users, vacancies, and applications
+
+  section.admin-section
+    .container
+      .admin-stats
+        .stat-card
+          i.fas.fa-users
+          h3= stats.users
+          p Users
+        .stat-card
+          i.fas.fa-briefcase
+          h3= stats.jobs
+          p Jobs
+        .stat-card
+          i.fas.fa-file-alt
+          h3= stats.applications
+          p Applications
+        .stat-card
+          i.fas.fa-university
+          h3= stats.departments
+          p Departments
+
+      .admin-actions
+        a.btn.btn-primary(href="/admin/departments")
+          i.fas.fa-university
+          | Manage Departments
+        a.btn.btn-outline(href="/jobs/new")
+          i.fas.fa-plus
+          | Post a Job

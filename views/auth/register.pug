@@ -1,0 +1,78 @@
+extends ../layout
+
+block content
+  section.auth-section
+    .auth-container
+      .auth-visual
+        .auth-visual-content
+          h2 Join MUBS Job Portal
+          p Create your free account to apply for open positions across the University.
+          .auth-features
+            .auth-feature
+              i.fas.fa-user-graduate
+              span For students & alumni
+            .auth-feature
+              i.fas.fa-building
+              span For departments & employers
+            .auth-feature
+              i.fas.fa-shield-alt
+              span Secure & confidential
+
+      .auth-form-wrapper
+        .auth-form
+          h1 Create Account
+          p.auth-subtitle Register to start applying or posting vacancies
+          form(action="/auth/register" method="POST")
+            .form-group
+              label Full Name *
+              input(type="text" name="name" required placeholder="e.g. Jane Nakato")
+            .form-group
+              label Email *
+              input(type="email" name="email" required placeholder="you@mubs.ac.ug")
+            .form-group
+              label Password *
+              input(type="password" name="password" required minlength="6" placeholder="At least 6 characters")
+            .form-group
+              label I am a...
+              select(name="role" id="roleSelect")
+                option(value="student") Student / Alumnus
+                option(value="employer") Employer / Department
+
+            #studentFields
+              .form-group
+                label Course
+                input(type="text" name="course" placeholder="e.g. BBA, BCOM, BSc CS")
+              .form-group
+                label Year of Study
+                input(type="number" name="yearOfStudy" min="1" max="5" placeholder="1 – 5")
+
+            #employerFields(style="display:none")
+              .form-group
+                label Company / Department
+                input(type="text" name="company" placeholder="e.g. Faculty of Commerce")
+
+            .form-group
+              label Phone
+              input(type="tel" name="phone" placeholder="+256 7XX XXX XXX")
+
+            button.btn.btn-primary.btn-block(type="submit") Create Account
+          p.auth-footer
+            | Already have an account? 
+            a(href="/auth/login") Login
+
+block scripts
+  script.
+    (function () {
+      const sel = document.getElementById('roleSelect');
+      const sF = document.getElementById('studentFields');
+      const eF = document.getElementById('employerFields');
+      sel.addEventListener('change', function () {
+        if (sel.value === 'employer') {
+          sF.style.display = 'none';
+          eF.style.display = 'block';
+        } else {
+          sF.style.display = 'block';
+          eF.style.display = 'none';
+        }
+      });
+    })();

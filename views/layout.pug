@@ -1,0 +1,35 @@
+doctype html
+html(lang="en")
+  head
+    meta(charset="UTF-8")
+    meta(name="viewport" content="width=device-width, initial-scale=1.0")
+    meta(name="description" content="MUBS Job Portal — Find academic, administrative and support staff vacancies at Makerere University Business School")
+    title #{title} | MUBS Jobs
+    link(rel="preconnect" href="https://fonts.googleapis.com")
+    link(rel="preconnect" href="https://fonts.gstatic.com" crossorigin)
+    link(href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet")
+    link(rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css")
+    link(rel="stylesheet" href="/css/style.css")
+    block head
+  body
+    include partials/header.pug
+
+    if success && success.length
+      .alert.alert-success
+        i.fas.fa-check-circle
+        span= success
+        button.alert-close(type="button") ×
+    if error && error.length
+      .alert.alert-error
+        i.fas.fa-exclamation-circle
+        span= error
+        button.alert-close(type="button") ×
+
+    main
+      block content
+
+    include partials/footer.pug
+
+    script(src="/js/main.js")
+    script(src="/js/modal.js")
+    block scripts

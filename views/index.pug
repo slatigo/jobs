@@ -1,0 +1,96 @@
+extends layout
+
+block content
+  section.hero
+    .hero-bg
+    .container.hero-content
+      .hero-text
+        span.hero-badge
+          i.fas.fa-graduation-cap
+          | Makerere University Business School
+        h1 Find Your Next Role at #[span.highlight MUBS]
+        p Explore academic, administrative, and support staff vacancies across faculties, directorates, and departments.
+        form.hero-search(action="/jobs" method="GET")
+          .search-group
+            i.fas.fa-search
+            input(type="text" name="search" placeholder="Job title, ref, or keyword...")
+          .search-group
+            i.fas.fa-map-marker-alt
+            input(type="text" name="location" placeholder="Location")
+          button.btn.btn-primary(type="submit")
+            i.fas.fa-search
+            | Search
+        .hero-stats
+          .stat
+            strong= stats.totalJobs || 0
+            span Active Jobs
+          .stat
+            strong= stats.departments || 0
+            span Departments
+          .stat
+            strong= stats.types || 0
+            span Categories
+
+      .hero-visual
+        .floating-card.card-1
+          i.fas.fa-briefcase
+          div
+            strong Open Positions
+            span Updated daily
+        .floating-card.card-2
+          i.fas.fa-users
+          div
+            strong MUBS Community
+            span Students & Staff
+        .floating-card.card-3
+          i.fas.fa-building
+          div
+            strong All Faculties
+            span Across MUBS
+
+  section.categories
+    .container
+      h2.section-title Browse by Faculty
+      p.section-subtitle Openings across MUBS faculties, directorates, and departments
+      .category-grid
+        if faculties && faculties.length
+          each d in faculties
+            a.category-card(href=`/jobs?department=${d.slug}`)
+              .category-icon
+                i.fas.fa-university
+              h3= d.name.replace('Faculty of ', '')
+              span View openings
+        else
+          p.text-muted No departments available yet.
+
+  if featured && featured.length
+    section.featured-jobs
+      .container
+        .section-header
+          div
+            h2.section-title Featured Vacancies
+            p.section-subtitle Priority positions currently open at MUBS
+          a.btn.btn-outline(href="/jobs") View All →
+        .jobs-grid
+          each job in featured
+            include partials/job-card.pug
+
+  if recent && recent.length
+    section.recent-jobs
+      .container
+        .section-header
+          div
+            h2.section-title Latest Opportunities
+            p.section-subtitle Recently posted vacancies
+        .jobs-grid
+          each job in recent
+            include partials/job-card.pug
+
+  section.cta
+    .container.cta-inner
+      .cta-content
+        h2 Ready to Join MUBS?
+        p Explore open vacancies across all faculties and departments.
+      .cta-actions
+        a.btn.btn-white(href="/jobs") Browse Jobs
+        a.btn.btn-outline-white(href="/auth/register") Create Account

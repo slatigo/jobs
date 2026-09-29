@@ -1,0 +1,142 @@
+/* ==================================================================
+   UTILITIES — breadcrumb, small helpers, responsive overrides
+   ================================================================== */
+
+.breadcrumb {
+  font-size: 13px;
+  opacity: .85;
+  margin-bottom: 8px;
+}
+.breadcrumb a { color: inherit; text-decoration: underline; }
+.breadcrumb .sep { margin: 0 6px; }
+.page-subtitle { opacity: .9; margin-top: 4px; font-size: 14px; }
+
+.empty-state-mini {
+  padding: 24px;
+  text-align: center;
+  color: var(--gray-500);
+  font-size: 13px;
+}
+
+.text-muted-inline {
+  color: var(--gray-500);
+  font-size: 12px;
+}
+
+/* ==================================================================
+   RESPONSIVE
+   ================================================================== */
+@media (max-width: 1024px) {
+  .hero-content { grid-template-columns: 1fr; gap: 40px; }
+  .hero-visual { display: none; }
+  .jobs-layout { grid-template-columns: 1fr; }
+  .filters { position: static; }
+  .job-detail-layout { grid-template-columns: 1fr; }
+  .footer-grid { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 900px) {
+  .app-table .th-hide-md,
+  .app-table .td-hide-md { display: none; }
+  .detail-drawer { grid-template-columns: 1fr; gap: 20px; padding: 20px; }
+}
+
+@media (max-width: 768px) {
+  .header-inner { height: 62px; }
+  .nav-toggle { display: flex; }
+  .main-nav {
+    position: fixed;
+    top: 62px;
+    left: 0;
+    right: 0;
+    background: #fff;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 16px;
+    gap: 4px;
+    box-shadow: var(--shadow);
+    transform: translateY(-120%);
+    transition: transform .3s ease;
+    z-index: 99;
+    border-top: 1px solid var(--gray-200);
+  }
+  .main-nav.open { transform: translateY(0); }
+  .nav-actions {
+    margin-left: 0;
+    margin-top: 8px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .nav-actions .btn { justify-content: center; }
+  .user-menu { width: 100%; }
+  .user-btn { width: 100%; justify-content: flex-start; }
+
+  .hero { padding: 50px 0 70px; }
+  .hero-search { grid-template-columns: 1fr; padding: 16px; }
+  .hero-stats { gap: 24px; }
+  .stat strong { font-size: 24px; }
+
+  section.categories,
+  section.featured-jobs,
+  section.recent-jobs,
+  section.jobs-list,
+  section.form-section {
+    padding: 50px 0;
+  }
+  .section-title { font-size: 24px; }
+
+  .form-row { grid-template-columns: 1fr; gap: 0; }
+  .form-card { padding: 24px; }
+
+  .auth-container { grid-template-columns: 1fr; }
+  .auth-visual { display: none; }
+  .auth-form-wrapper { padding: 32px 24px; }
+
+  .job-header-card,
+  .job-section,
+  .sidebar-card { padding: 20px; }
+  .job-header-top { flex-direction: column; }
+  .company-logo-lg { width: 56px; height: 56px; font-size: 24px; }
+
+  .footer-grid { grid-template-columns: 1fr; gap: 30px; }
+
+  .status-tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 6px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .status-tab { padding: 10px 14px; font-size: 13px; }
+
+  .bulk-form { flex-direction: column; align-items: stretch; }
+  .bulk-form .btn { width: 100%; justify-content: center; }
+
+  .application-actions .action-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .application-actions .btn { width: 100%; justify-content: center; }
+}
+
+@media (max-width: 640px) {
+  .app-table .th-hide-sm,
+  .app-table .td-hide-sm { display: none; }
+  .app-table { font-size: 13px; }
+  .app-table thead th,
+  .app-row td { padding: 10px 8px; }
+  .applicant-cell { min-width: 0; }
+  .applicant-avatar-sm { width: 32px; height: 32px; font-size: 12px; }
+  .icon-btn { width: 28px; height: 28px; font-size: 12px; }
+
+  .application-card-header { flex-wrap: wrap; }
+  .application-card-footer { flex-direction: column; align-items: stretch; }
+  .attachment-meta strong { max-width: 180px; }
+}
+
+@media (max-width: 480px) {
+  .container { padding: 0 16px; }
+  .jobs-grid { grid-template-columns: 1fr; }
+  .category-grid { grid-template-columns: 1fr 1fr; }
+  .hero-stats { flex-wrap: wrap; gap: 16px; }
+  .pagination .page-link { min-width: 34px; height: 34px; font-size: 13px; }
+}

@@ -1,0 +1,37 @@
+/* ==================================================================
+   ADMIN — dashboard stats, error pages
+   ================================================================== */
+
+.admin-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+
+/* Error pages */
+.error-page {
+  min-height: 60vh;
+  display: grid;
+  place-items: center;
+  padding: 60px 20px;
+}
+.error-content { text-align: center; }
+.error-content h1 {
+  font-size: 96px;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  line-height: 1;
+}
+.error-content h2 {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 16px 0 8px;
+}
+.error-content p {
+  color: var(--gray-500);
+  margin-bottom: 24px;
+}

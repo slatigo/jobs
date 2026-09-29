@@ -1,0 +1,120 @@
+extends ../layout
+
+block head
+  link(rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css")
+
+block content
+  section.page-header
+    .container
+      p.breadcrumb
+        a(href="/jobs") Jobs
+        span.sep /
+        a(href=`/jobs/${job.id}`)= job.title
+        span.sep /
+        span Edit
+      h1 Edit Position
+      p Update the details below and save your changes
+
+  section.form-section
+    .container
+      .form-card
+        form(action=`/jobs/${job.id}/edit` method="POST" id="jobForm")
+          input(type="hidden" name="description" id="descriptionInput")
+
+          .form-row
+            .form-group
+              label Job Reference
+              input(type="text" name="jobRef" value=job.jobRef || '' placeholder="e.g. MUBS/HR/2025/001")
+            .form-group
+              label Position Title *
+              input(type="text" name="title" value=job.title required)
+
+          .form-row
+            .form-group
+              label Department / Faculty *
+              select(name="departmentId" required)
+                option(value="" disabled) Select department...
+                each d in departments
+                  option(value=d.id selected=job.departmentId === d.id)= d.name
+            .form-group
+              label Grade
+              input(type="text" name="grade" value=job.grade || '' placeholder="e.g. M3, M5, M7")
+
+          .form-row
+            .form-group
+              label Job Type *
+              select(name="type" required)
+                each t in JOB_TYPES
+                  option(value=t selected=job.type === t)= t
+            .form-group
+              label Contract Terms *
+              select(name="contractTerms" required)
+                each c in CONTRACT_TERMS
+                  option(value=c selected=job.contractTerms === c)= c
+
+          .form-row
+            .form-group
+              label Duty Station
+              input(type="text" name="location" value=job.location || 'MUBS Main Campus, Nakawa')
+            .form-group
+              label Number of Vacancies
+              input(type="number" name="vacancies" value=job.vacancies || 1 min="1")
+
+          .form-row
+            .form-group
+              label Application Deadline *
+              - const deadlineVal = job.deadline ? new Date(job.deadline).toISOString().slice(0, 10) : ''
+              input(type="date" name="deadline" value=deadlineVal required)
+            .form-group
+              label Contact Email *
+              input(type="email" name="contactEmail" value=job.contactEmail || '' required)
+
+          .form-group
+            label Contact Phone
+            input(type="tel" name="contactPhone" value=job.contactPhone || '' placeholder="+256 414 505 200")
+
+          .form-group
+            label Job Description *
+            small.text-muted Include duties, qualifications, experience, and terms of service
+            #descriptionEditor.editor
+
+          .form-actions
+            a.btn.btn-ghost(href=`/jobs/${job.id}`) Cancel
+            button.btn.btn-primary(type="submit")
+              i.fas.fa-check
+              | Save Changes
+
+block scripts
+  script(src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js")
+  script.
+    const toolbarOptions = [
+      [{ header: [1, 2, 3, false] }],
+      ['bold', 'italic', 'underline', 'strike'],
+      [{ list: 'ordered' }, { list: 'bullet' }],
+      [{ indent: '-1' }, { indent: '+1' }],
+      ['blockquote', 'code-block'],
+      ['link'],
+      ['clean']
+    ];
+
+    const quill = new Quill('#descriptionEditor', {
+      theme: 'snow',
+      placeholder: 'Describe the position...',
+      modules: { toolbar: toolbarOptions }
+    });
+
+    // Preload existing description (sanitized HTML from server)
+    quill.clipboard.dangerouslyPasteHTML(!{JSON.stringify(job.description || '')});
+
+    document.getElementById('jobForm').addEventListener('submit', function (e) {
+      const html = quill.root.innerHTML.trim();
+      const isEmpty = !html || html === '<p><br></p>';
+      if (isEmpty) {
+        e.preventDefault();
+        quill.root.parentElement.classList.add('editor-error');
+        alert('Please provide a job description.');
+        return;
+      }
+      quill.root.parentElement.classList.remove('editor-error');
+      document.getElementById('descriptionInput').value = html;
+    });

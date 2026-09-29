@@ -1,0 +1,390 @@
+extends ../layout
+
+block content
+  section.page-header
+    .container
+      p.breadcrumb
+        a(href="/jobs") Jobs
+        span.sep /
+        a(href=`/jobs/${job.id}`)= job.title
+        span.sep /
+        span Applications
+      h1 Applications
+      p #{counts.all} application#{counts.all === 1 ? '' : 's'} for "#{job.title}"
+
+  section.applications-page
+    .container
+
+      //- ============================================================
+      //- CONTEXT BAR
+      //- ============================================================
+      .job-context-bar
+        .job-context-info
+          .company-logo-sm= job.department ? job.department.name.charAt(0).toUpperCase() : 'J'
+          div
+            strong= job.title
+            span= job.department ? job.department.name : '—'
+            if job.jobRef
+              span.job-ref-inline Ref: #{job.jobRef}
+        .job-context-actions
+          a.btn.btn-ghost(href=`/jobs/${job.id}`)
+            i.fas.fa-arrow-left
+            | Back to Job
+
+      //- ============================================================
+      //- STATUS TABS
+      //- ============================================================
+      nav.status-tabs
+        //- ============================================================
+        //- STATUS TABS
+        //- ============================================================
+        -
+          const tabs = [
+            { key: 'all',         label: 'All',         icon: 'fa-list' },
+            { key: 'pending',     label: 'Pending',     icon: 'fa-hourglass-half' },
+            { key: 'reviewed',    label: 'Reviewed',    icon: 'fa-eye' },
+            { key: 'shortlisted', label: 'Shortlisted', icon: 'fa-star' },
+            { key: 'accepted',    label: 'Accepted',    icon: 'fa-check-circle' },
+            { key: 'rejected',    label: 'Rejected',    icon: 'fa-times-circle' }
+          ]
+        nav.status-tabs
+          each tab in tabs
+            a.status-tab(
+              href=(tab.key === 'all' ? `/jobs/${job.id}/applications` : `/jobs/${job.id}/applications?status=${tab.key}`)
+              class=(activeFilter === tab.key ? 'active' : '')
+            )
+              i.fas(class=tab.icon)
+              span= tab.label
+              span.tab-count= counts[tab.key]
+
+      //- ============================================================
+      //- BULK BAR
+      //- ============================================================
+      - const nonShortlisted = counts.pending + counts.reviewed
+      if counts.all > 0
+        .bulk-bar
+          .bulk-left
+            input(type="checkbox" id="selectAll")
+            label(for="selectAll") Select all
+            span#selectedCount.selected-count 0 selected
+
+          .bulk-right
+            if nonShortlisted > 0
+              button.btn.btn-sm.btn-danger(
+                type="button"
+                data-bulk-action="bulk-reject"
+                data-bulk-scope="non-shortlisted"
+                data-confirm=`This will reject ${nonShortlisted} non-shortlisted application${nonShortlisted === 1 ? '' : 's'} (pending + reviewed). Shortlisted candidates will NOT be affected.`
+                data-confirm-title="Bulk Reject — Non-Shortlisted"
+                data-confirm-label=`Reject ${nonShortlisted} Application${nonShortlisted === 1 ? '' : 's'}`
+                data-confirm-tone="danger"
+                data-confirm-reason="true"
+              )
+                i.fas.fa-users-slash
+                | Reject Non-Shortlisted (#{nonShortlisted})
+
+            if activeFilter === 'pending' && counts.pending > 0
+              button.btn.btn-sm.btn-danger(
+                type="button"
+                data-bulk-action="bulk-reject"
+                data-bulk-scope="pending"
+                data-confirm=`Reject all ${counts.pending} pending application${counts.pending === 1 ? '' : 's'}?`
+                data-confirm-title="Bulk Reject — Pending"
+                data-confirm-label="Reject All Pending"
+                data-confirm-tone="danger"
+                data-confirm-reason="true"
+              )
+                i.fas.fa-users-slash
+                | Reject All Pending (#{counts.pending})
+
+            if activeFilter === 'reviewed' && counts.reviewed > 0
+              button.btn.btn-sm.btn-danger(
+                type="button"
+                data-bulk-action="bulk-reject"
+                data-bulk-scope="reviewed"
+                data-confirm=`Reject all ${counts.reviewed} reviewed application${counts.reviewed === 1 ? '' : 's'}?`
+                data-confirm-title="Bulk Reject — Reviewed"
+                data-confirm-label="Reject All Reviewed"
+                data-confirm-tone="danger"
+                data-confirm-reason="true"
+              )
+                i.fas.fa-users-slash
+                | Reject All Reviewed (#{counts.reviewed})
+
+            button.btn.btn-sm.btn-danger(
+              type="button"
+              id="bulkRejectSelected"
+              disabled
+              data-confirm="Reject the selected applications?"
+              data-confirm-title="Reject Selected"
+              data-confirm-label="Reject Selected"
+              data-confirm-tone="danger"
+              data-confirm-reason="true"
+            )
+              i.fas.fa-check-square
+              | Reject Selected
+
+      //- ============================================================
+      //- APPLICATIONS TABLE
+      //- ============================================================
+      if applications && applications.length
+        .app-table-wrap
+          table.app-table
+            thead
+              tr
+                th.th-check
+                th Applicant
+                th.th-hide-sm Contact
+                th.th-hide-md Applied
+                th Status
+                th.th-hide-md CV
+                th.th-actions Actions
+
+            tbody
+              each a in applications
+                //- Main row
+                tr.app-row(
+                  class=`status-${a.status}`
+                  data-app-id=a.id
+                  data-app-name=a.fullName
+                  data-app-email=a.email
+                  data-app-status=a.status
+                  data-details-id=`details-${a.id}`
+                )
+                  td.td-check
+                    input.app-checkbox(type="checkbox" value=a.id)
+
+                  td.td-applicant
+                    .applicant-cell
+                      .applicant-avatar-sm= a.fullName.charAt(0).toUpperCase()
+                      div
+                        strong= a.fullName
+                        if a.coverLetter
+                          span.cover-preview= a.coverLetter.slice(0, 60) + (a.coverLetter.length > 60 ? '…' : '')
+
+                  td.td-contact.th-hide-sm
+                    a(href=`mailto:${a.email}`)= a.email
+                    if a.phone
+                      br
+                      a(href=`tel:${a.phone}`)= a.phone
+
+                  td.th-hide-md
+                    - const appliedAt = new Date(a.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+                    = appliedAt
+
+                  td
+                    span.pill(class=`pill-${a.status === 'accepted' ? 'success' : a.status === 'rejected' ? 'danger' : a.status === 'shortlisted' ? 'info' : a.status === 'reviewed' ? 'primary' : 'warning'}`)= a.status
+
+                  td.th-hide-md
+                    if a.attachmentUrl
+                      a.btn.btn-sm.btn-ghost(
+                        href=`/files/resumes/${a.attachmentUrl.split('/').pop()}`
+                        target="_blank"
+                        rel="noopener"
+                        title=a.attachmentName
+                      )
+                        i.fas.fa-file-pdf
+                    else
+                      span.text-muted —
+
+                  td.td-actions
+                    .quick-actions
+                      //- Pending
+                      if a.status === 'pending'
+                        button.icon-btn.icon-btn-info(
+                          type="button"
+                          title="Shortlist"
+                          data-status-action="shortlisted"
+                          data-app-id=a.id
+                          data-app-name=a.fullName
+                        )
+                          i.fas.fa-star
+                        button.icon-btn.icon-btn-success(
+                          type="button"
+                          title="Accept"
+                          data-status-action="accepted"
+                          data-app-id=a.id
+                          data-app-name=a.fullName
+                        )
+                          i.fas.fa-check
+                        button.icon-btn.icon-btn-danger(
+                          type="button"
+                          title="Reject"
+                          data-status-action="rejected"
+                          data-app-id=a.id
+                          data-app-name=a.fullName
+                          data-confirm=`Reject ${a.fullName}?`
+                          data-confirm-title="Reject Application"
+                          data-confirm-label="Reject"
+                          data-confirm-tone="danger"
+                          data-confirm-reason="true"
+                        )
+                          i.fas.fa-times
+
+                      //- Reviewed
+                      else if a.status === 'reviewed'
+                        button.icon-btn.icon-btn-info(
+                          type="button"
+                          title="Shortlist"
+                          data-status-action="shortlisted"
+                          data-app-id=a.id
+                          data-app-name=a.fullName
+                        )
+                          i.fas.fa-star
+                        button.icon-btn.icon-btn-success(
+                          type="button"
+                          title="Accept"
+                          data-status-action="accepted"
+                          data-app-id=a.id
+                          data-app-name=a.fullName
+                        )
+                          i.fas.fa-check
+                        button.icon-btn.icon-btn-danger(
+                          type="button"
+                          title="Reject"
+                          data-status-action="rejected"
+                          data-app-id=a.id
+                          data-app-name=a.fullName
+                          data-confirm=`Reject ${a.fullName}?`
+                          data-confirm-title="Reject Application"
+                          data-confirm-label="Reject"
+                          data-confirm-tone="danger"
+                          data-confirm-reason="true"
+                        )
+                          i.fas.fa-times
+
+                      //- Shortlisted
+                      else if a.status === 'shortlisted'
+                        button.icon-btn.icon-btn-success(
+                          type="button"
+                          title="Accept"
+                          data-status-action="accepted"
+                          data-app-id=a.id
+                          data-app-name=a.fullName
+                        )
+                          i.fas.fa-check
+                        button.icon-btn.icon-btn-danger(
+                          type="button"
+                          title="Reject"
+                          data-status-action="rejected"
+                          data-app-id=a.id
+                          data-app-name=a.fullName
+                          data-confirm=`Reject shortlisted candidate ${a.fullName}?`
+                          data-confirm-title="Reject Shortlisted Candidate"
+                          data-confirm-label="Reject"
+                          data-confirm-tone="danger"
+                          data-confirm-reason="true"
+                        )
+                          i.fas.fa-times
+                        button.icon-btn(
+                          type="button"
+                          title="Back to Reviewed"
+                          data-status-action="reviewed"
+                          data-app-id=a.id
+                          data-app-name=a.fullName
+                        )
+                          i.fas.fa-undo
+
+                      //- Accepted
+                      else if a.status === 'accepted'
+                        button.icon-btn(
+                          type="button"
+                          title="Undo (back to Shortlisted)"
+                          data-status-action="shortlisted"
+                          data-app-id=a.id
+                          data-app-name=a.fullName
+                        )
+                          i.fas.fa-undo
+                        button.icon-btn.icon-btn-danger(
+                          type="button"
+                          title="Reject"
+                          data-status-action="rejected"
+                          data-app-id=a.id
+                          data-app-name=a.fullName
+                          data-confirm=`Reject an ALREADY ACCEPTED applicant (${a.fullName})? This is highly unusual.`
+                          data-confirm-title="Reject After Accepting"
+                          data-confirm-label="Yes, Reject Anyway"
+                          data-confirm-tone="warning"
+                          data-confirm-reason="true"
+                        )
+                          i.fas.fa-times
+
+                      //- Rejected
+                      else if a.status === 'rejected'
+                        button.icon-btn(
+                          type="button"
+                          title="Reconsider"
+                          data-status-action="pending"
+                          data-app-id=a.id
+                          data-app-name=a.fullName
+                        )
+                          i.fas.fa-undo
+
+                      button.icon-btn.icon-btn-toggle(
+                        type="button"
+                        title="Show details"
+                        data-expand-row=a.id
+                      )
+                        i.fas.fa-chevron-down
+
+                //- Detail drawer (hidden by default)
+                tr.app-detail-row(id=`details-${a.id}`)
+                  td(colspan="7")
+                    .detail-drawer
+                      .detail-col
+                        .detail-label
+                          i.fas.fa-comment-alt
+                          | Cover Letter
+                        .detail-body= a.coverLetter
+
+                      if a.history && a.history.length
+                        .detail-col
+                          .detail-label
+                            i.fas.fa-history
+                            | History
+                          ul.history-list
+                            each h in a.history
+                              li.history-item
+                                .history-line
+                                  span.status-from= h.fromStatus || '—'
+                                  i.fas.fa-arrow-right
+                                  span.status-to(class=`status-${h.toStatus}`)= h.toStatus
+                                .history-meta
+                                  span
+                                    i.fas.fa-user
+                                    = h.changedBy ? h.changedBy.name : 'System'
+                                  - const changedAt = new Date(h.createdAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                                  span
+                                    i.fas.fa-clock
+                                    = changedAt
+                                  if h.source && h.source !== 'single'
+                                    span.history-source
+                                      i.fas.fa-layer-group
+                                      = h.source
+                                if h.reason
+                                  .history-reason= h.reason
+
+        //- Hidden forms that JS fills in dynamically
+        form#statusForm(action="" method="POST" style="display:none")
+          input(type="hidden" name="returnTo" value=`/jobs/${job.id}/applications?status=${activeFilter}`)
+          input(type="hidden" name="status" id="statusFormStatus")
+          input(type="hidden" name="reason" id="statusFormReason")
+
+        form#bulkForm(action=`/jobs/${job.id}/applications/bulk-reject` method="POST" style="display:none")
+          input(type="hidden" name="scope" id="bulkFormScope")
+          input(type="hidden" name="reason" id="bulkFormReason")
+          input(type="hidden" name="returnTo" value=`/jobs/${job.id}/applications?status=${activeFilter}`)
+          div#bulkFormIds
+
+      else
+        .empty-state
+          i.fas.fa-inbox
+          if activeFilter === 'all'
+            h3 No applications yet
+            p This job hasn't received any applications.
+          else
+            h3 No #{activeFilter} applications
+            p No applications with this status.
+            a.btn.btn-primary(href=`/jobs/${job.id}/applications`) View All Applications
+block scripts
+  script(src="/js/applications.js" defer)

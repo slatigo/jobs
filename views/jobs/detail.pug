@@ -1,0 +1,171 @@
+extends ../layout
+
+block content
+  section.job-detail
+    .container
+      .job-detail-layout
+        .job-main
+          .job-header-card
+            .job-header-top
+              .company-logo-lg= job.department ? job.department.name.charAt(0).toUpperCase() : 'J'
+              .job-header-info
+                h1= job.title
+                p.company-name
+                  i.fas.fa-university
+                  = job.department ? job.department.name : 'MUBS'
+                if job.jobRef
+                  p.ref-line Ref: #{job.jobRef}
+                .job-badges
+                  span.badge.badge-primary= job.type
+                  span.badge.badge-secondary= job.contractTerms
+                  if job.grade
+                    span.badge.badge-secondary Grade #{job.grade}
+                  if job.status === 'closed'
+                    span.badge.badge-closed
+                      i.fas.fa-lock
+                      | Closed
+                  if job.featured
+                    span.badge.badge-featured
+                      i.fas.fa-star
+                      | Featured
+
+            .job-info-grid
+              .info-item
+                i.fas.fa-map-marker-alt
+                div
+                  span Duty Station
+                  strong= job.location
+              .info-item
+                i.fas.fa-users
+                div
+                  span Vacancies
+                  strong= job.vacancies
+              .info-item
+                i.fas.fa-calendar-times
+                div
+                  span Deadline
+                  strong= new Date(job.deadline).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+              .info-item
+                i.fas.fa-eye
+                div
+                  span Views
+                  strong= job.views
+
+          .job-section
+            h2
+              i.fas.fa-file-alt
+              | Position Details
+            .job-text!= job.description
+
+        .job-sidebar
+          //- ============================================================
+          //- MANAGE (poster or admin only)
+          //- ============================================================
+          if canManage
+            .sidebar-card.manage-card
+              h3
+                i.fas.fa-cog
+                |  Manage
+              .manage-actions
+                a.btn.btn-primary.btn-block(href=`/jobs/${job.id}/applications`)
+                  i.fas.fa-users
+                  if applicationCount > 0
+                    |  View Applications (#{applicationCount})
+                  else
+                    |  Applications (0)
+
+                a.btn.btn-outline.btn-block(href=`/jobs/${job.id}/edit`)
+                  i.fas.fa-edit
+                  |  Edit Job
+
+                if job.status === 'active'
+                  form(action=`/jobs/${job.id}/close` method="POST" data-confirm="Close this job? Applicants will no longer be able to apply." data-confirm-title="Close Job" data-confirm-label="Close Job" data-confirm-tone="warning")
+                    button.btn.btn-outline.btn-block(type="submit")
+                      i.fas.fa-lock
+                      |  Close Job
+                else
+                  .closed-notice
+                    i.fas.fa-info-circle
+                    span This job is closed.
+
+                form(action=`/jobs/${job.id}/delete` method="POST" data-confirm="Permanently delete this job and all its applications? This cannot be undone." data-confirm-title="Delete Job" data-confirm-label="Delete Permanently" data-confirm-tone="danger")
+                  button.btn.btn-danger.btn-block(type="submit")
+                    i.fas.fa-trash
+                    |  Delete Job
+
+          //- ============================================================
+          //- APPLY (everyone else)
+          //- ============================================================
+          if !canManage
+            .sidebar-card.apply-card
+              h3 Apply for this Position
+
+              if alreadyApplied
+                .applied-notice
+                  i.fas.fa-check-circle
+                  p You have already applied to this vacancy.
+
+              else if user
+                form(action=`/jobs/${job.id}/apply` method="POST" enctype="multipart/form-data")
+                  .form-group
+                    label Full Name
+                    input(type="text" name="fullName" value=user.name required)
+
+                  .form-group
+                    label Email
+                    input(type="email" name="email" value=user.email required)
+
+                  .form-group
+                    label Phone
+                    input(type="tel" name="phone" required)
+
+                  .form-group
+                    label Cover Letter
+                    textarea(name="coverLetter" rows="5" placeholder="Briefly explain your suitability for this position..." required)
+
+                  .form-group
+                    label CV / Resume *
+                    small.text-muted PDF, DOC or DOCX — max 5 MB
+                    input(type="file" name="attachment" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required)
+
+                  button.btn.btn-primary.btn-block(type="submit")
+                    i.fas.fa-paper-plane
+                    |  Submit Application
+
+              else
+                .apply-cta
+                  p Login or create an account to apply for this position.
+                  a.btn.btn-primary.btn-block(href="/auth/login") Login
+                  a.btn.btn-outline.btn-block(href="/auth/register") Register
+
+          //- ============================================================
+          //- CONTACT
+          //- ============================================================
+          .sidebar-card
+            h3 Contact Information
+            .contact-item
+              i.fas.fa-envelope
+              div
+                span Email
+                a(href=`mailto:${job.contactEmail}`)= job.contactEmail
+            if job.contactPhone
+              .contact-item
+                i.fas.fa-phone
+                div
+                  span Phone
+                  a(href=`tel:${job.contactPhone}`)= job.contactPhone
+
+          //- ============================================================
+          //- SHARE
+          //- ============================================================
+          .sidebar-card
+            h3 Share this Vacancy
+            .share-buttons
+              a.share-btn.share-fb(href="#" aria-label="Share on Facebook")
+                i.fab.fa-facebook-f
+              a.share-btn.share-tw(href="#" aria-label="Share on Twitter")
+                i.fab.fa-twitter
+              a.share-btn.share-li(href="#" aria-label="Share on LinkedIn")
+                i.fab.fa-linkedin-in
+              a.share-btn.share-wa(href="#" aria-label="Share on WhatsApp")
+                i.fab.fa-whatsapp

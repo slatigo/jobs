@@ -1,0 +1,135 @@
+/* ==================================================================
+   AUTH — login & register split-screen layout
+   ================================================================== */
+
+/* ------------------------------------------------------------------
+   Outer section
+   ------------------------------------------------------------------ */
+.auth-section {
+  min-height: calc(100vh - 70px);
+  display: grid;
+  place-items: center;
+  padding: 40px 20px;
+  background: linear-gradient(135deg, var(--gray-50), #e0e7ff);
+}
+
+/* ------------------------------------------------------------------
+   Container: two columns on desktop, one on mobile
+   ------------------------------------------------------------------ */
+.auth-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  max-width: 1000px;
+  width: 100%;
+  background: #fff;
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+}
+
+/* ------------------------------------------------------------------
+   Left column — visual / branding
+   ------------------------------------------------------------------ */
+.auth-visual {
+  background: linear-gradient(135deg, var(--primary-dark), var(--primary), var(--primary-light));
+  color: #fff;
+  padding: 48px 40px;
+  display: flex;
+  align-items: center;
+}
+
+.auth-visual-content h2 {
+  font-size: 28px;
+  font-weight: 800;
+  margin-bottom: 12px;
+  letter-spacing: -.02em;
+}
+
+.auth-visual-content p {
+  opacity: .9;
+  margin-bottom: 32px;
+  line-height: 1.6;
+}
+
+.auth-features {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.auth-feature {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.auth-feature i {
+  width: 36px;
+  height: 36px;
+  background: rgba(255, 255, 255, .15);
+  border-radius: var(--radius-sm);
+  display: grid;
+  place-items: center;
+  backdrop-filter: blur(10px);
+  flex-shrink: 0;
+}
+
+/* ------------------------------------------------------------------
+   Right column — form
+   ------------------------------------------------------------------ */
+.auth-form-wrapper {
+  padding: 48px 40px;
+  display: flex;
+  align-items: center;
+}
+
+.auth-form { width: 100%; }
+
+.auth-form h1 {
+  font-size: 26px;
+  font-weight: 800;
+  margin-bottom: 6px;
+  letter-spacing: -.02em;
+}
+
+.auth-subtitle {
+  color: var(--gray-500);
+  font-size: 14px;
+  margin-bottom: 28px;
+}
+
+.auth-form .form-group { margin-bottom: 18px; }
+.auth-form .btn { margin-top: 8px; }
+
+.auth-footer {
+  text-align: center;
+  margin-top: 24px;
+  font-size: 14px;
+  color: var(--gray-500);
+}
+
+.auth-footer a {
+  color: var(--primary);
+  font-weight: 600;
+}
+.auth-footer a:hover { text-decoration: underline; }
+
+/* ------------------------------------------------------------------
+   Role-based field groups (register form)
+   ------------------------------------------------------------------ */
+#studentFields,
+#employerFields {
+  display: block;
+}
+#employerFields { display: none; } /* shown via JS when employer is selected */
+
+/* ------------------------------------------------------------------
+   Responsive
+   ------------------------------------------------------------------ */
+@media (max-width: 768px) {
+  .auth-container { grid-template-columns: 1fr; }
+  .auth-visual { display: none; }
+  .auth-form-wrapper { padding: 32px 24px; }
+}

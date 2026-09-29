@@ -1,0 +1,128 @@
+require('dotenv').config();
+const express = require('express');
+const path = require('path');
+const fs = require('fs');
+const session = require('express-session');
+const SequelizeStore = require('connect-session-sequelize')(session.Store);
+const flash = require('connect-flash');
+const methodOverride = require('method-override');
+
+/* ------------------------------------------------------------------ */
+/* Ensure required folders exist before anything else runs             */
+/* ------------------------------------------------------------------ */
+const REQUIRED_DIRS = [
+  path.join(__dirname, 'uploads'),
+  path.join(__dirname, 'uploads', 'resumes'),
+  path.join(__dirname, 'public')
+];
+
+REQUIRED_DIRS.forEach((dir) => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+    console.log('📁 Created folder:', dir);
+  }
+});
+
+/* ------------------------------------------------------------------ */
+/* Models & app                                                        */
+/* ------------------------------------------------------------------ */
+const { sequelize } = require('./models');
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+/* ------------------------------------------------------------------ */
+/* View engine                                                         */
+/* ------------------------------------------------------------------ */
+app.set('view engine', 'pug');
+app.set('views', path.join(__dirname, 'views'));
+
+/* ------------------------------------------------------------------ */
+/* Core middleware                                                     */
+/* ------------------------------------------------------------------ */
+app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+app.use(methodOverride('_method'));
+
+/* ------------------------------------------------------------------ */
+/* Request logger (must be ABOVE routes to see everything)             */
+/* ------------------------------------------------------------------ */
+app.use((req, res, next) => {
+  console.log('>>>', req.method, req.originalUrl);
+  next();
+});
+
+/* ------------------------------------------------------------------ */
+/* Session store in MySQL                                              */
+/* ------------------------------------------------------------------ */
+const sessionStore = new SequelizeStore({ db: sequelize, tableName: 'sessions' });
+
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'mubs-secret',
+  store: sessionStore,
+  resave: false,
+  saveUninitialized: false,
+  cookie: { maxAge: 1000 * 60 * 60 * 24, httpOnly: true }
+}));
+
+app.use(flash());
+
+/* ------------------------------------------------------------------ */
+/* Global view locals                                                  */
+/* ------------------------------------------------------------------ */
+app.use((req, res, next) => {
+  res.locals.user = req.session.user || null;
+  res.locals.success = req.flash('success');
+  res.locals.error = req.flash('error');
+  res.locals.currentPath = req.path;
+  next();
+});
+
+//* ------------------------------------------------------------------ */
+/* Routes                                                              */
+/* ------------------------------------------------------------------ */
+app.use('/',            require('./routes/index'));
+app.use('/jobs',        require('./routes/jobs'));
+app.use('/auth',        require('./routes/auth'));
+app.use('/admin',       require('./routes/admin'));
+app.use('/departments', require('./routes/departments'));
+app.use('/files',       require('./routes/files'));
+/* ------------------------------------------------------------------ */
+/* 404 handler (must be LAST of the non-error middleware)              */
+/* ------------------------------------------------------------------ */
+app.use((req, res) => {
+  res.status(404).render('404', { title: 'Page Not Found' });
+});
+
+/* ------------------------------------------------------------------ */
+/* Error handler (4 args → Express treats this as error middleware)    */
+/* ------------------------------------------------------------------ */
+app.use((err, req, res, next) => {
+  console.error('[APP ERROR]', err.stack);
+
+  if (res.headersSent) {
+    return next(err);
+  }
+
+  res.status(500).render('500', { title: 'Server Error', error: err });
+});
+
+/* ------------------------------------------------------------------ */
+/* Bootstrap                                                           */
+/* ------------------------------------------------------------------ */
+(async () => {
+  try {
+    await sequelize.authenticate();
+    console.log('✅ MySQL connected');
+    await sequelize.sync({ alter: false });
+
+    // Session table needs to exist before the app starts serving
+    await sessionStore.sync();
+    console.log('✅ Sessions table ready');
+
+    app.listen(PORT, () => console.log(`🚀 http://localhost:${PORT}`));
+  } catch (err) {
+    console.error('❌ Startup failed:', err.message);
+    process.exit(1);
+  }
+})();

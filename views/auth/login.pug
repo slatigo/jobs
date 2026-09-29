@@ -1,0 +1,35 @@
+extends ../layout
+
+block content
+  section.auth-section
+    .auth-container
+      .auth-visual
+        .auth-visual-content
+          h2 Welcome Back
+          p Login to apply for MUBS vacancies, track applications, and manage your profile.
+          .auth-features
+            .auth-feature
+              i.fas.fa-briefcase
+              span Access all open positions
+            .auth-feature
+              i.fas.fa-paper-plane
+              span One-click applications
+            .auth-feature
+              i.fas.fa-chart-line
+              span Track your application status
+
+      .auth-form-wrapper
+        .auth-form
+          h1 Login to Your Account
+          p.auth-subtitle Enter your credentials to continue
+          form(action="/auth/login" method="POST")
+            .form-group
+              label Email Address
+              input(type="email" name="email" required placeholder="you@mubs.ac.ug")
+            .form-group
+              label Password
+              input(type="password" name="password" required placeholder="••••••••")
+            button.btn.btn-primary.btn-block(type="submit") Login
+          p.auth-footer
+            | Don't have an account? 
+            a(href="/auth/register") Sign up

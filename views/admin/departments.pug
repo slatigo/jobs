@@ -1,0 +1,71 @@
+extends ../layout
+
+block content
+  section.page-header
+    .container
+      h1 Departments
+      p Manage faculties, directorates, and departments
+
+  section.admin-section
+    .container
+      .form-card
+        h2 Add New Department
+        form(action="/admin/departments" method="POST")
+          .form-row
+            .form-group
+              label Name *
+              input(type="text" name="name" required placeholder="e.g. Faculty of Law")
+            .form-group
+              label Short Name
+              input(type="text" name="shortName" placeholder="e.g. FOL")
+          .form-row
+            .form-group
+              label Type *
+              select(name="type" required)
+                option(value="Faculty") Faculty
+                option(value="Directorate") Directorate
+                option(value="Department") Department
+                option(value="Office") Office
+                option(value="Unit") Unit
+            .form-group
+              label Display Order
+              input(type="number" name="displayOrder" value="100" min="1")
+          .form-group
+            label Description
+            textarea(name="description" rows="2" placeholder="Optional short description...")
+          .form-actions
+            button.btn.btn-primary(type="submit")
+              i.fas.fa-plus
+              | Add Department
+
+      .table-card
+        table.admin-table
+          thead
+            tr
+              th Name
+              th Short
+              th Type
+              th Jobs
+              th Active
+              th Actions
+          tbody
+            if departments && departments.length
+              each d in departments
+                tr
+                  td= d.name
+                  td= d.shortName || '—'
+                  td= d.type
+                  td= d.jobs ? d.jobs.length : 0
+                  td
+                    if d.active
+                      span.pill.pill-success Active
+                    else
+                      span.pill.pill-muted Inactive
+                  td
+                    form(action=`/admin/departments/${d.id}/toggle` method="POST" style="display:inline")
+                      button.btn.btn-sm.btn-ghost(type="submit")
+                        = d.active ? 'Disable' : 'Enable'
+            else
+              tr
+                td(colspan="6" style="text-align:center;padding:32px")
+                  | No departments yet.
