@@ -8,7 +8,7 @@ const Application = sequelize.define('Application', {
   fullName: { type: DataTypes.STRING(120), allowNull: false },
   email: { type: DataTypes.STRING(160), allowNull: false, validate: { isEmail: true } },
   phone: { type: DataTypes.STRING(30), allowNull: false },
-  coverLetter: { type: DataTypes.TEXT, allowNull: false },
+  coverLetter: { type: DataTypes.TEXT, allowNull: true },
 
   // Attachment (CV / resume)
   attachmentUrl:  { type: DataTypes.STRING(500), allowNull: false },

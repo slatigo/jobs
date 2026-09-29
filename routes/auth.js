@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const { User } = require('../models');
-
+const { sendWelcomeEmail ,sendPasswordResetEmail} = require('../utils/mail');
+const crypto = require('crypto');
 /* ------------------------------------------------------------------ */
 /* Helpers                                                             */
 /* ------------------------------------------------------------------ */
-const ALLOWED_ROLES = ['student', 'employer']; // never let a form pick 'admin'
+const ALLOWED_ROLES = ['applicant', 'employer'];   // never allow 'admin' from a form
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function normalizeEmail(email) {
@@ -29,9 +30,9 @@ function redirectIfAuthed(req, res, next) {
   next();
 }
 
-/* ------------------------------------------------------------------ */
+/* ================================================================== */
 /* LOGIN — GET                                                         */
-/* ------------------------------------------------------------------ */
+/* ================================================================== */
 router.get('/login', redirectIfAuthed, (req, res) => {
   res.render('auth/login', {
     title: 'Login',
@@ -40,33 +41,32 @@ router.get('/login', redirectIfAuthed, (req, res) => {
   });
 });
 
-/* ------------------------------------------------------------------ */
+/* ================================================================== */
 /* LOGIN — POST                                                        */
-/* ------------------------------------------------------------------ */
+/* ================================================================== */
 router.post('/login', redirectIfAuthed, async (req, res) => {
   const { email, password, returnTo = '/' } = req.body;
 
   const fail = (msg) => {
     req.flash('error', msg);
-    // Preserve email so the user doesn't retype it
     req.flash('formEmail', String(email || ''));
     return res.redirect(`/auth/login?returnTo=${encodeURIComponent(returnTo)}`);
   };
 
   try {
-    // ---- Validation ----
+    /* ---- Validation ---- */
     if (!email || !password) return fail('Email and password are required.');
     const normalized = normalizeEmail(email);
     if (!EMAIL_RE.test(normalized)) return fail('Please enter a valid email address.');
 
-    // ---- Lookup ----
+    /* ---- Lookup ---- */
     const user = await User.findOne({ where: { email: normalized } });
-    if (!user) return fail('Invalid email or password.'); // don't reveal which
+    if (!user) return fail('Invalid email or password.');   // don't reveal which
 
     const ok = await user.comparePassword(password);
     if (!ok) return fail('Invalid email or password.');
 
-    // ---- Session fixation protection ----
+    /* ---- Session fixation protection ---- */
     req.session.regenerate((err) => {
       if (err) {
         console.error('[AUTH LOGIN] session regen:', err);
@@ -83,9 +83,9 @@ router.post('/login', redirectIfAuthed, async (req, res) => {
   }
 });
 
-/* ------------------------------------------------------------------ */
+/* ================================================================== */
 /* REGISTER — GET                                                      */
-/* ------------------------------------------------------------------ */
+/* ================================================================== */
 router.get('/register', redirectIfAuthed, (req, res) => {
   res.render('auth/register', {
     title: 'Register',
@@ -94,9 +94,9 @@ router.get('/register', redirectIfAuthed, (req, res) => {
   });
 });
 
-/* ------------------------------------------------------------------ */
+/* ================================================================== */
 /* REGISTER — POST                                                     */
-/* ------------------------------------------------------------------ */
+/* ================================================================== */
 router.post('/register', redirectIfAuthed, async (req, res) => {
   const {
     name,
@@ -106,32 +106,28 @@ router.post('/register', redirectIfAuthed, async (req, res) => {
     role,
     phone,
     course,
-    yearOfStudy,
     company,
     returnTo = '/'
   } = req.body;
 
-  // ---- Stash form values to repopulate on error ----
+  /* ---- Stash form values to repopulate on error ---- */
   const stashForm = () => {
-    req.flash('formName', name || '');
-    req.flash('formEmail', email || '');
-    req.flash('formRole', role || 'student');
-    req.flash('formPhone', phone || '');
-    req.flash('formCourse', course || '');
-    req.flash('formYear', yearOfStudy || '');
-    req.flash('formCompany', company || '');
+    req.flash('formName', (name || '').trim());
+    req.flash('formEmail', (email || '').trim());
+    req.flash('formRole', role || 'applicant');
+    req.flash('formPhone', (phone || '').trim());
+    req.flash('formCourse', (course || '').trim());
+    req.flash('formCompany', (company || '').trim());
   };
 
   const fail = (msg) => {
     stashForm();
     req.flash('error', msg);
-    return res.redirect(
-      `/auth/register?returnTo=${encodeURIComponent(returnTo)}`
-    );
+    return res.redirect(`/auth/register?returnTo=${encodeURIComponent(returnTo)}`);
   };
 
   try {
-    // ---- Validation ----
+    /* ---- Validation ---- */
     if (!name || !name.trim()) return fail('Full name is required.');
     if (name.trim().length < 3) return fail('Name must be at least 3 characters.');
 
@@ -145,40 +141,41 @@ router.post('/register', redirectIfAuthed, async (req, res) => {
       return fail('Passwords do not match.');
     }
 
-    const safeRole = ALLOWED_ROLES.includes(role) ? role : 'student';
+    const safeRole = ALLOWED_ROLES.includes(role) ? role : 'applicant';
 
-    // Role-specific validation
-    let yearVal = null;
-    if (safeRole === 'student') {
-      if (yearOfStudy) {
-        yearVal = parseInt(yearOfStudy, 10);
-        if (Number.isNaN(yearVal) || yearVal < 1 || yearVal > 6) {
-          return fail('Year of study must be between 1 and 6.');
-        }
-      }
-    } else if (safeRole === 'employer') {
+    /* ---- Role-specific validation ---- */
+    if (safeRole === 'employer') {
       if (!company || !company.trim()) {
         return fail('Company / Department name is required for employers.');
       }
     }
 
-    // ---- Uniqueness check ----
+    /* ---- Uniqueness check ---- */
     const existing = await User.findOne({ where: { email: normalized } });
     if (existing) return fail('An account with that email already exists.');
 
-    // ---- Create ----
+    /* ---- Create ---- */
     const user = await User.create({
       name: name.trim(),
       email: normalized,
-      password, // model hook hashes it
+      password,                                 // model hook hashes it
       role: safeRole,
       phone: phone ? phone.trim() : null,
-      course: safeRole === 'student' && course ? course.trim() : null,
-      yearOfStudy: safeRole === 'student' ? yearVal : null,
+      course: safeRole === 'applicant' && course ? course.trim() : null,
       company: safeRole === 'employer' && company ? company.trim() : null
     });
 
-    // ---- Auto-login with session regen ----
+    /* ---- Send welcome email (fire-and-forget) ---- */
+    sendWelcomeEmail({
+      to: user.email,
+      name: user.name,
+      role: user.role
+    }).catch((err) => {
+      console.error('[WELCOME EMAIL]', err.message);
+      // Registration succeeds even if email fails
+    });
+
+    /* ---- Auto-login with session regen ---- */
     req.session.regenerate((err) => {
       if (err) {
         console.error('[AUTH REGISTER] session regen:', err);
@@ -193,7 +190,7 @@ router.post('/register', redirectIfAuthed, async (req, res) => {
   } catch (err) {
     console.error('[AUTH REGISTER]', err);
 
-    // Don't leak raw Sequelize messages to users
+    /* ---- Sanitized error messages (never leak Sequelize internals) ---- */
     const msg = err.name === 'SequelizeUniqueConstraintError'
       ? 'That email is already registered.'
       : err.name === 'SequelizeValidationError'
@@ -206,9 +203,9 @@ router.post('/register', redirectIfAuthed, async (req, res) => {
   }
 });
 
-/* ------------------------------------------------------------------ */
+/* ================================================================== */
 /* LOGOUT — GET                                                        */
-/* ------------------------------------------------------------------ */
+/* ================================================================== */
 router.get('/logout', (req, res) => {
   if (!req.session) return res.redirect('/');
 
@@ -218,5 +215,138 @@ router.get('/logout', (req, res) => {
     res.redirect('/');
   });
 });
+/* ================================================================== */
+/* FORGOT PASSWORD — GET                                               */
+/* ================================================================== */
+router.get('/forgot-password', (req, res) => {
+  if (req.session.user) return res.redirect('/');
+  res.render('auth/forgot-password', { title: 'Forgot Password' });
+});
 
+/* ================================================================== */
+/* FORGOT PASSWORD — POST                                              */
+/* ================================================================== */
+router.post('/forgot-password', async (req, res) => {
+  const { email } = req.body;
+  const GENERIC_OK = 'If an account exists with that email, a reset link has been sent.';
+
+  try {
+    if (!email || !email.trim()) {
+      req.flash('error', 'Please enter your email address.');
+      return res.redirect('/auth/forgot-password');
+    }
+
+    const normalized = normalizeEmail(email);
+    const user = await User.findOne({ where: { email: normalized } });
+
+    // Always respond the same way — never reveal whether the email exists
+    if (!user) {
+      req.flash('success', GENERIC_OK);
+      return res.redirect('/auth/login');
+    }
+
+    /* ---- Generate token (raw + hashed) ---- */
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
+
+    user.passwordResetToken = hashedToken;
+    user.passwordResetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    await user.save();
+
+    /* ---- Build reset URL ---- */
+    const baseUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
+    const resetUrl = `${baseUrl}/auth/reset-password/${rawToken}`;
+
+    /* ---- Send email (fire-and-forget) ---- */
+    sendPasswordResetEmail({
+      to: user.email,
+      name: user.name,
+      resetUrl
+    }).catch((err) => console.error('[RESET EMAIL]', err.message));
+
+    req.flash('success', GENERIC_OK);
+    res.redirect('/auth/login');
+  } catch (err) {
+    console.error('[FORGOT PASSWORD]', err);
+    req.flash('error', 'Something went wrong. Please try again.');
+    res.redirect('/auth/forgot-password');
+  }
+});
+
+/* ================================================================== */
+/* RESET PASSWORD — GET                                                */
+/* ================================================================== */
+router.get('/reset-password/:token', async (req, res) => {
+  try {
+    const hashedToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
+
+    const user = await User.findOne({
+      where: {
+        passwordResetToken: hashedToken,
+        passwordResetExpires: { [Op.gt]: new Date() }
+      }
+    });
+
+    if (!user) {
+      req.flash('error', 'This password reset link is invalid or has expired.');
+      return res.redirect('/auth/forgot-password');
+    }
+
+    res.render('auth/reset-password', {
+      title: 'Reset Password',
+      token: req.params.token
+    });
+  } catch (err) {
+    console.error('[RESET PASSWORD GET]', err);
+    req.flash('error', 'Something went wrong.');
+    res.redirect('/auth/login');
+  }
+});
+
+/* ================================================================== */
+/* RESET PASSWORD — POST                                               */
+/* ================================================================== */
+router.post('/reset-password/:token', async (req, res) => {
+  const { password, passwordConfirm } = req.body;
+
+  try {
+    /* ---- Validate new password ---- */
+    if (!password || password.length < 6) {
+      req.flash('error', 'Password must be at least 6 characters.');
+      return res.redirect(`/auth/reset-password/${req.params.token}`);
+    }
+    if (password !== passwordConfirm) {
+      req.flash('error', 'Passwords do not match.');
+      return res.redirect(`/auth/reset-password/${req.params.token}`);
+    }
+
+    /* ---- Look up the user by hashed token ---- */
+    const hashedToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
+
+    const user = await User.findOne({
+      where: {
+        passwordResetToken: hashedToken,
+        passwordResetExpires: { [Op.gt]: new Date() }
+      }
+    });
+
+    if (!user) {
+      req.flash('error', 'This password reset link is invalid or has expired.');
+      return res.redirect('/auth/forgot-password');
+    }
+
+    /* ---- Update password + clear token ---- */
+    user.password = password;              // beforeSave hook hashes it
+    user.passwordResetToken = null;
+    user.passwordResetExpires = null;
+    await user.save();
+
+    req.flash('success', 'Your password has been reset. Please log in.');
+    res.redirect('/auth/login');
+  } catch (err) {
+    console.error('[RESET PASSWORD POST]', err);
+    req.flash('error', 'Something went wrong. Please try again.');
+    res.redirect(`/auth/reset-password/${req.params.token}`);
+  }
+});
 module.exports = router;

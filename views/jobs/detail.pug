@@ -120,13 +120,14 @@ block content
                     input(type="tel" name="phone" required)
 
                   .form-group
-                    label Cover Letter
-                    textarea(name="coverLetter" rows="5" placeholder="Briefly explain your suitability for this position..." required)
-
-                  .form-group
-                    label CV / Resume *
-                    small.text-muted PDF, DOC or DOCX — max 5 MB
-                    input(type="file" name="attachment" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required)
+                    label Attachment *
+                    small.text-muted Required document — PDF, DOC or DOCX. Max 10 MB.
+                    input(
+                      type="file"
+                      name="attachment"
+                      accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                      required
+                    )
 
                   button.btn.btn-primary.btn-block(type="submit")
                     i.fas.fa-paper-plane

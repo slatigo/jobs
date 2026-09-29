@@ -316,7 +316,7 @@ router.get('/users', isAdmin, async (req, res) => {
 router.post('/users/:id/role', isAdmin, async (req, res) => {
   try {
     const { role } = req.body;
-    if (!['student', 'employer', 'admin'].includes(role)) {
+    if (!['applicant', 'employer', 'admin'].includes(role)) {
       req.flash('error', 'Invalid role');
       return res.redirect('/admin/users');
     }

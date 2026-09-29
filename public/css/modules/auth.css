@@ -124,7 +124,19 @@
   display: block;
 }
 #employerFields { display: none; } /* shown via JS when employer is selected */
-
+.auth-forgot {
+  text-align: right;
+  margin-top: -8px;
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+.auth-forgot a {
+  color: var(--primary);
+  font-weight: 600;
+}
+.auth-forgot a:hover {
+  text-decoration: underline;
+}
 /* ------------------------------------------------------------------
    Responsive
    ------------------------------------------------------------------ */

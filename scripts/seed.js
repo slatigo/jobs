@@ -32,15 +32,15 @@ const { sequelize, User, Department, Job } = require('../models');
       }
     });
 
-    const [student] = await User.findOrCreate({
-      where: { email: 'student@mubs.ac.ug' },
+    const [applicant] = await User.findOrCreate({
+      where: { email: 'applicant@mubs.ac.ug' },
       defaults: {
         name: 'John Ssemakula',
-        email: 'student@mubs.ac.ug',
-        password: 'student123',
-        role: 'student',
+        email: 'applicant@mubs.ac.ug',
+        password: 'applicant123',
+        role: 'applicant',
         course: 'BBA',
-        yearOfStudy: 3,
+        yearOfGraduation: 2026,   // ← was yearOfStudy: 3
         phone: '+256700000001'
       }
     });

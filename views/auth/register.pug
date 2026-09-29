@@ -6,11 +6,11 @@ block content
       .auth-visual
         .auth-visual-content
           h2 Join MUBS Job Portal
-          p Create your free account to apply for open positions across the University.
+          p Create your free account to browse and apply for academic, administrative, and support staff vacancies at Makerere University Business School.
           .auth-features
             .auth-feature
               i.fas.fa-user-graduate
-              span For students & alumni
+              span For students, alumni & professionals
             .auth-feature
               i.fas.fa-building
               span For departments & employers
@@ -21,41 +21,105 @@ block content
       .auth-form-wrapper
         .auth-form
           h1 Create Account
-          p.auth-subtitle Register to start applying or posting vacancies
-          form(action="/auth/register" method="POST")
+          p.auth-subtitle Register to start applying for positions
+
+          form(action="/auth/register" method="POST" novalidate)
+            //- Preserve returnTo if provided
+            input(type="hidden" name="returnTo" value=returnTo || '/')
+
             .form-group
               label Full Name *
-              input(type="text" name="name" required placeholder="e.g. Jane Nakato")
+              input(
+                type="text"
+                name="name"
+                required
+                minlength="3"
+                maxlength="120"
+                placeholder="e.g. Jane Nakato"
+                value=formName && formName[0] ? formName[0] : ''
+              )
+
             .form-group
               label Email *
-              input(type="email" name="email" required placeholder="you@mubs.ac.ug")
+              input(
+                type="email"
+                name="email"
+                required
+                maxlength="160"
+                placeholder="you@mubs.ac.ug"
+                value=formEmail && formEmail[0] ? formEmail[0] : ''
+              )
+
             .form-group
               label Password *
-              input(type="password" name="password" required minlength="6" placeholder="At least 6 characters")
+              input(
+                type="password"
+                name="password"
+                required
+                minlength="6"
+                placeholder="At least 6 characters"
+              )
+
             .form-group
-              label I am a...
-              select(name="role" id="roleSelect")
-                option(value="student") Student / Alumnus
-                option(value="employer") Employer / Department
+              label Confirm Password *
+              input(
+                type="password"
+                name="passwordConfirm"
+                required
+                minlength="6"
+                placeholder="Re-enter your password"
+              )
 
-            #studentFields
-              .form-group
-                label Course
-                input(type="text" name="course" placeholder="e.g. BBA, BCOM, BSc CS")
-              .form-group
-                label Year of Study
-                input(type="number" name="yearOfStudy" min="1" max="5" placeholder="1 – 5")
+            .form-group
+              label I am a... *
+              select(name="role" id="roleSelect" required)
+                option(
+                  value="applicant"
+                  selected=(!formRole || formRole[0] === 'applicant')
+                ) Applicant (student, alumnus, or job seeker)
+                option(
+                  value="employer"
+                  selected=(formRole && formRole[0] === 'employer')
+                ) Employer / Department
 
+            //- Applicant-specific fields
+            #applicantFields
+              .form-group
+                label Course / Programme
+                input(
+                  type="text"
+                  name="course"
+                  maxlength="120"
+                  placeholder="e.g. BBA, BCOM, BSc CS"
+                  value=formCourse && formCourse[0] ? formCourse[0] : ''
+                )
+
+            //- Employer-specific fields
             #employerFields(style="display:none")
               .form-group
-                label Company / Department
-                input(type="text" name="company" placeholder="e.g. Faculty of Commerce")
+                label Company / Department *
+                input(
+                  type="text"
+                  name="company"
+                  maxlength="150"
+                  placeholder="e.g. Faculty of Commerce"
+                  value=formCompany && formCompany[0] ? formCompany[0] : ''
+                )
 
             .form-group
               label Phone
-              input(type="tel" name="phone" placeholder="+256 7XX XXX XXX")
+              input(
+                type="tel"
+                name="phone"
+                maxlength="30"
+                placeholder="+256 7XX XXX XXX"
+                value=formPhone && formPhone[0] ? formPhone[0] : ''
+              )
 
-            button.btn.btn-primary.btn-block(type="submit") Create Account
+            button.btn.btn-primary.btn-block(type="submit")
+              i.fas.fa-user-plus
+              |  Create Account
+
           p.auth-footer
             | Already have an account? 
             a(href="/auth/login") Login
@@ -63,16 +127,27 @@ block content
 block scripts
   script.
     (function () {
-      const sel = document.getElementById('roleSelect');
-      const sF = document.getElementById('studentFields');
-      const eF = document.getElementById('employerFields');
-      sel.addEventListener('change', function () {
-        if (sel.value === 'employer') {
-          sF.style.display = 'none';
-          eF.style.display = 'block';
-        } else {
-          sF.style.display = 'block';
-          eF.style.display = 'none';
+      const roleSelect    = document.getElementById('roleSelect');
+      const applicantF    = document.getElementById('applicantFields');
+      const employerF     = document.getElementById('employerFields');
+
+      function sync() {
+        const isEmployer = roleSelect.value === 'employer';
+        applicantF.style.display = isEmployer ? 'none' : 'block';
+        employerF.style.display  = isEmployer ? 'block' : 'none';
+      }
+
+      roleSelect.addEventListener('change', sync);
+      sync();  // run on load to respect pre-selected role after a failed submit
+
+      // Client-side password match check
+      const form = document.querySelector('form[action="/auth/register"]');
+      form.addEventListener('submit', function (e) {
+        const pw  = form.querySelector('input[name="password"]').value;
+        const pw2 = form.querySelector('input[name="passwordConfirm"]').value;
+        if (pw !== pw2) {
+          e.preventDefault();
+          alert('Passwords do not match.');
         }
       });
     })();

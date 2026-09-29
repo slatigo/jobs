@@ -14,7 +14,10 @@ header.site-header
     nav.main-nav
       a.nav-link(href="/" class=currentPath === '/' ? 'active' : '') Home
       a.nav-link(href="/jobs" class=currentPath.startsWith('/jobs') ? 'active' : '') Jobs
-      a.nav-link(href="/departments" class=currentPath.startsWith('/departments') ? 'active' : '') Departments
+
+      //- Departments — admin only
+      if user && user.role === 'admin'
+        a.nav-link(href="/departments" class=currentPath.startsWith('/departments') ? 'active' : '') Departments
 
       if user && (user.role === 'employer' || user.role === 'admin')
         a.nav-link(href="/jobs/new" class=currentPath === '/jobs/new' ? 'active' : '') Post a Job
@@ -25,8 +28,8 @@ header.site-header
         if user
           .user-menu
             button.user-btn(type="button")
-              .avatar= user.name.charAt(0).toUpperCase()
-              span= user.name.split(' ')[0]
+              .avatar= (user.name || 'U').charAt(0).toUpperCase()
+              span= (user.name || 'User').split(' ')[0]
               i.fas.fa-chevron-down
             .dropdown
               a(href="/auth/logout")

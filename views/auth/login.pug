@@ -22,14 +22,34 @@ block content
         .auth-form
           h1 Login to Your Account
           p.auth-subtitle Enter your credentials to continue
+
           form(action="/auth/login" method="POST")
             .form-group
               label Email Address
-              input(type="email" name="email" required placeholder="you@mubs.ac.ug")
+              input(
+                type="email"
+                name="email"
+                required
+                placeholder="you@mubs.ac.ug"
+                value=formEmail && formEmail[0] ? formEmail[0] : ''
+              )
+
             .form-group
               label Password
-              input(type="password" name="password" required placeholder="••••••••")
-            button.btn.btn-primary.btn-block(type="submit") Login
+              input(
+                type="password"
+                name="password"
+                required
+                placeholder="••••••••"
+              )
+
+            p.auth-forgot
+              a(href="/auth/forgot-password") Forgot your password?
+
+            button.btn.btn-primary.btn-block(type="submit")
+              i.fas.fa-sign-in-alt
+              |  Login
+
           p.auth-footer
             | Don't have an account? 
             a(href="/auth/register") Sign up

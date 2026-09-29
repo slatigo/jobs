@@ -9,7 +9,10 @@
   gap: 32px;
   align-items: start;
 }
-
+/* Jobs listing — smaller top padding because the page-header provides the break */
+  section.jobs-list {
+  padding-top: 32px;
+}
 .filters {
   background: #fff;
   padding: 24px;

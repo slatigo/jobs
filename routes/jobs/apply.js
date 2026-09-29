@@ -7,7 +7,7 @@ const { logStatusChange } = require('../../utils/logStatusChange');
 const { upload, handleUploadError } = require('../../middleware/upload');
 
 /* ================================================================== */
-/* POST /:id/apply — submit application with CV upload                 */
+/* POST /:id/apply — submit application with attachment                */
 /* ================================================================== */
 router.post(
   '/:id/apply',
@@ -24,6 +24,7 @@ router.post(
       const job = await Job.findByPk(req.params.id, { transaction: t });
       if (!job) throw new Error('Job not found');
 
+      /* ---- Reject if job is closed ---- */
       if (isClosed(job)) {
         await t.rollback();
         const reason = closedReason(job);
@@ -36,6 +37,7 @@ router.post(
         return res.redirect(`/jobs/${job.id}`);
       }
 
+      /* ---- Prevent duplicate applications ---- */
       const existing = await Application.findOne({
         where: { jobId: job.id, userId: req.session.user.id },
         transaction: t
@@ -47,20 +49,31 @@ router.post(
         return res.redirect(`/jobs/${job.id}`);
       }
 
-      const { fullName, email, phone, coverLetter } = req.body;
+      /* ---- Validate required fields ---- */
+      const { fullName, email, phone } = req.body;
 
-      if (!fullName || !email || !phone || !coverLetter) {
+      if (!fullName || !fullName.trim()) {
         await t.rollback();
-        req.flash('error', 'Please fill in all application fields.');
+        req.flash('error', 'Full name is required.');
         return res.redirect(`/jobs/${job.id}`);
       }
-
+      if (!email || !email.trim()) {
+        await t.rollback();
+        req.flash('error', 'Email is required.');
+        return res.redirect(`/jobs/${job.id}`);
+      }
+      if (!phone || !phone.trim()) {
+        await t.rollback();
+        req.flash('error', 'Phone number is required.');
+        return res.redirect(`/jobs/${job.id}`);
+      }
       if (!req.file) {
         await t.rollback();
-        req.flash('error', 'Please attach your CV / resume (PDF or Word).');
+        req.flash('error', 'Please attach the required document.');
         return res.redirect(`/jobs/${job.id}`);
       }
 
+      /* ---- Create application ---- */
       const application = await Application.create(
         {
           jobId: job.id,
@@ -68,7 +81,7 @@ router.post(
           fullName: fullName.trim(),
           email: email.trim(),
           phone: phone.trim(),
-          coverLetter: coverLetter.trim(),
+          coverLetter: null,                 // ← no longer collected
           attachmentUrl:  `/uploads/resumes/${req.file.filename}`,
           attachmentName: req.file.originalname,
           attachmentMime: req.file.mimetype,
@@ -78,6 +91,7 @@ router.post(
         { transaction: t }
       );
 
+      /* ---- Initial history row ---- */
       await logStatusChange({
         applicationId: application.id,
         fromStatus: null,
