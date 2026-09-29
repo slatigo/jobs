@@ -12,8 +12,8 @@ block content
               i.fas.fa-user-graduate
               span For students, alumni & professionals
             .auth-feature
-              i.fas.fa-building
-              span For departments & employers
+              i.fas.fa-briefcase
+              span Apply for open positions
             .auth-feature
               i.fas.fa-shield-alt
               span Secure & confidential
@@ -24,7 +24,6 @@ block content
           p.auth-subtitle Register to start applying for positions
 
           form(action="/auth/register" method="POST" novalidate)
-            //- Preserve returnTo if provided
             input(type="hidden" name="returnTo" value=returnTo || '/')
 
             .form-group
@@ -35,6 +34,7 @@ block content
                 required
                 minlength="3"
                 maxlength="120"
+                autocomplete="name"
                 placeholder="e.g. Jane Nakato"
                 value=formName && formName[0] ? formName[0] : ''
               )
@@ -46,8 +46,30 @@ block content
                 name="email"
                 required
                 maxlength="160"
+                autocomplete="email"
                 placeholder="you@mubs.ac.ug"
                 value=formEmail && formEmail[0] ? formEmail[0] : ''
+              )
+
+            .form-group
+              label Course / Programme
+              input(
+                type="text"
+                name="course"
+                maxlength="120"
+                placeholder="e.g. BBA, BCOM, BSc CS"
+                value=formCourse && formCourse[0] ? formCourse[0] : ''
+              )
+
+            .form-group
+              label Phone
+              input(
+                type="tel"
+                name="phone"
+                maxlength="30"
+                autocomplete="tel"
+                placeholder="+256 7XX XXX XXX"
+                value=formPhone && formPhone[0] ? formPhone[0] : ''
               )
 
             .form-group
@@ -57,6 +79,7 @@ block content
                 name="password"
                 required
                 minlength="6"
+                autocomplete="new-password"
                 placeholder="At least 6 characters"
               )
 
@@ -67,53 +90,8 @@ block content
                 name="passwordConfirm"
                 required
                 minlength="6"
+                autocomplete="new-password"
                 placeholder="Re-enter your password"
-              )
-
-            .form-group
-              label I am a... *
-              select(name="role" id="roleSelect" required)
-                option(
-                  value="applicant"
-                  selected=(!formRole || formRole[0] === 'applicant')
-                ) Applicant (student, alumnus, or job seeker)
-                option(
-                  value="employer"
-                  selected=(formRole && formRole[0] === 'employer')
-                ) Employer / Department
-
-            //- Applicant-specific fields
-            #applicantFields
-              .form-group
-                label Course / Programme
-                input(
-                  type="text"
-                  name="course"
-                  maxlength="120"
-                  placeholder="e.g. BBA, BCOM, BSc CS"
-                  value=formCourse && formCourse[0] ? formCourse[0] : ''
-                )
-
-            //- Employer-specific fields
-            #employerFields(style="display:none")
-              .form-group
-                label Company / Department *
-                input(
-                  type="text"
-                  name="company"
-                  maxlength="150"
-                  placeholder="e.g. Faculty of Commerce"
-                  value=formCompany && formCompany[0] ? formCompany[0] : ''
-                )
-
-            .form-group
-              label Phone
-              input(
-                type="tel"
-                name="phone"
-                maxlength="30"
-                placeholder="+256 7XX XXX XXX"
-                value=formPhone && formPhone[0] ? formPhone[0] : ''
               )
 
             button.btn.btn-primary.btn-block(type="submit")
@@ -127,20 +105,6 @@ block content
 block scripts
   script.
     (function () {
-      const roleSelect    = document.getElementById('roleSelect');
-      const applicantF    = document.getElementById('applicantFields');
-      const employerF     = document.getElementById('employerFields');
-
-      function sync() {
-        const isEmployer = roleSelect.value === 'employer';
-        applicantF.style.display = isEmployer ? 'none' : 'block';
-        employerF.style.display  = isEmployer ? 'block' : 'none';
-      }
-
-      roleSelect.addEventListener('change', sync);
-      sync();  // run on load to respect pre-selected role after a failed submit
-
-      // Client-side password match check
       const form = document.querySelector('form[action="/auth/register"]');
       form.addEventListener('submit', function (e) {
         const pw  = form.querySelector('input[name="password"]').value;

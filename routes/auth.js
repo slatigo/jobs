@@ -141,14 +141,7 @@ router.post('/register', redirectIfAuthed, async (req, res) => {
       return fail('Passwords do not match.');
     }
 
-    const safeRole = ALLOWED_ROLES.includes(role) ? role : 'applicant';
-
-    /* ---- Role-specific validation ---- */
-    if (safeRole === 'employer') {
-      if (!company || !company.trim()) {
-        return fail('Company / Department name is required for employers.');
-      }
-    }
+    const safeRole = 'applicant';
 
     /* ---- Uniqueness check ---- */
     const existing = await User.findOne({ where: { email: normalized } });

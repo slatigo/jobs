@@ -9,11 +9,11 @@ block content
           i.fas.fa-graduation-cap
           | Makerere University Business School
         h1 Find Your Next Role at #[span.highlight MUBS]
-        p Explore academic, administrative, and support staff vacancies across faculties, directorates, and departments.
+        p Explore academic, administrative, and support staff vacancies at Makerere University Business School.
         form.hero-search(action="/jobs" method="GET")
           .search-group
             i.fas.fa-search
-            input(type="text" name="search" placeholder="Job title, ref, or keyword...")
+            input(type="text" name="search" placeholder="Search by job title...")
           .search-group
             i.fas.fa-map-marker-alt
             input(type="text" name="location" placeholder="Location")
@@ -25,11 +25,11 @@ block content
             strong= stats.totalJobs || 0
             span Active Jobs
           .stat
-            strong= stats.departments || 0
-            span Departments
-          .stat
             strong= stats.types || 0
-            span Categories
+            span Job Types
+          .stat
+            strong= stats.closingSoon || 0
+            span Closing Soon
 
       .hero-visual
         .floating-card.card-1
@@ -41,27 +41,12 @@ block content
           i.fas.fa-users
           div
             strong MUBS Community
-            span Students & Staff
+            span Students & Alumni
         .floating-card.card-3
           i.fas.fa-building
           div
             strong All Faculties
             span Across MUBS
-
-  section.categories
-    .container
-      h2.section-title Browse by Faculty
-      p.section-subtitle Openings across MUBS faculties, directorates, and departments
-      .category-grid
-        if faculties && faculties.length
-          each d in faculties
-            a.category-card(href=`/jobs?department=${d.slug}`)
-              .category-icon
-                i.fas.fa-university
-              h3= d.name.replace('Faculty of ', '')
-              span View openings
-        else
-          p.text-muted No departments available yet.
 
   if featured && featured.length
     section.featured-jobs
