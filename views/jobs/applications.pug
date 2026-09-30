@@ -167,18 +167,17 @@ block content
                       //- Icons: accept → check, reject → times, others → arrow.
                       each target in stages
                         if target.key !== a.status
-                          - const isAccept   = target.key === 'accepted'
-                          - const isReject   = target.key === 'rejected'
-                          - const btnClass   = isAccept
-                            ? 'icon-btn-success'
-                            : (isReject ? 'icon-btn-danger' : (
-                                target.color === 'primary' ? 'icon-btn-info' : ''
-                              ))
-                          - const btnTitle   = isAccept
-                            ? 'Accept'
-                            : (isReject ? 'Reject' : `Move to ${target.label}`)
-                          - const safeName   = a.fullName.replace(/'/g, "\\'")
-                          - const safeLabel  = target.label.replace(/'/g, "\\'")
+                          -
+                            const isAccept = target.key === 'accepted'
+                            const isReject = target.key === 'rejected'
+                            const btnClass = isAccept
+                              ? 'icon-btn-success'
+                              : (isReject ? 'icon-btn-danger' : (target.color === 'primary' ? 'icon-btn-info' : ''))
+                            const btnTitle = isAccept
+                              ? 'Accept'
+                              : (isReject ? 'Reject' : `Move to ${target.label}`)
+                            const safeName  = a.fullName.replace(/'/g, "\\'")
+                            const safeLabel = target.label.replace(/'/g, "\\'")
 
                           button.icon-btn(
                             class=btnClass
