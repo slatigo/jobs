@@ -1,5 +1,6 @@
 require('dotenv').config();
 const express = require('express');
+
 const path = require('path');
 const fs = require('fs');
 const session = require('express-session');
@@ -29,6 +30,7 @@ REQUIRED_DIRS.forEach((dir) => {
 /* ------------------------------------------------------------------ */
 const { sequelize } = require('./models');
 const app = express();
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3000;
 
 /* ------------------------------------------------------------------ */
