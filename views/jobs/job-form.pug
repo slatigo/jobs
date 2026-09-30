@@ -1,0 +1,407 @@
+extends ../layout
+
+block head
+  link(rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css")
+
+block content
+  //- ============================================================
+  //- Mode detection & shared values (all single-line, no multi-line ternaries)
+  //- ============================================================
+  - const isEdit = typeof job !== 'undefined' && job !== null
+  - const formAction = isEdit ? `/jobs/${job.id}/edit` : '/jobs'
+  - const pageTitle = isEdit ? 'Edit Position' : 'Post a New Position'
+  - const pageSubtitle = isEdit ? 'Update the details below and save your changes' : 'Fill in the details below to publish a vacancy at MUBS'
+  - const submitLabel = isEdit ? 'Save Changes' : 'Publish Position'
+  - const cancelHref = isEdit ? `/jobs/${job.id}` : '/jobs'
+  - const refHint = isEdit ? 'Auto-generated on creation. Edit only if needed.' : 'Auto-generated (e.g. MUBS/ADM/2026/001) if left empty.'
+  - const refPlaceholder = isEdit ? 'Leave blank to keep as-is' : 'Leave blank to auto-generate'
+  - const sidebarHeading = isEdit ? 'Save Changes' : 'Ready to Publish?'
+  - const sidebarHelp = isEdit ? 'Update the details on the left, then save your changes.' : 'Fill in the required fields, then publish the position.'
+
+  //- Value resolver: prefer job.* in edit mode, form.* in create mode
+  - const v = (key, fallback = '') => {
+  -   if (isEdit) return job[key] != null ? job[key] : fallback;
+  -   return form[key] != null ? form[key] : fallback;
+  - }
+
+  //- Deadline value, precomputed to avoid a ternary in the template body
+  - const deadlineVal = isEdit && job.deadline ? new Date(job.deadline).toISOString().slice(0, 10) : v('deadline')
+
+  //- Stages initial JSON (create mode only)
+  - const stagesInitial = isEdit ? '[]' : (form.stages || '[]')
+
+  section.page-header
+    .container
+      h1= pageTitle
+      p= pageSubtitle
+
+  section.form-section
+    .container
+      form(action=formAction method="POST" id="jobForm")
+        input(type="hidden" name="description" id="descriptionInput" value=v('description'))
+
+        .form-layout
+
+          //- ============================================================
+          //- LEFT COLUMN — form fields
+          //- ============================================================
+          .form-main
+
+            //- --------------------------------------------------------
+            //- REFERENCE
+            //- --------------------------------------------------------
+            .form-card
+              h2.section-heading Reference
+
+              .form-row
+                .form-group
+                  label Job Reference
+                  input(
+                    type="text"
+                    name="jobRef"
+                    maxlength="60"
+                    placeholder=refPlaceholder
+                    value=v('jobRef')
+                  )
+                  small.text-muted= refHint
+
+                .form-group
+                  label Reference Category *
+                  select(name="refCategory" required)
+                    each cat in REF_CATEGORIES
+                      option(
+                        value=cat.code
+                        selected=(v('refCategory', 'GEN') === cat.code)
+                      )= cat.code + ' — ' + cat.label
+
+            //- --------------------------------------------------------
+            //- POSITION
+            //- --------------------------------------------------------
+            .form-card
+              h2.section-heading Position
+
+              .form-row
+                .form-group
+                  label Position Title *
+                  input(
+                    type="text"
+                    name="title"
+                    required
+                    maxlength="180"
+                    placeholder="e.g. School Bursar"
+                    value=v('title')
+                  )
+                .form-group
+                  label Department / Faculty *
+                  select(name="departmentId" required)
+                    option(value="" disabled selected=(!v('departmentId'))) Select department...
+                    each d in departments
+                      option(
+                        value=d.id
+                        selected=(String(v('departmentId')) === String(d.id))
+                      )= d.name
+
+              .form-row
+                .form-group
+                  label Grade
+                  input(
+                    type="text"
+                    name="grade"
+                    maxlength="30"
+                    placeholder="e.g. M3, M5, M7"
+                    value=v('grade')
+                  )
+                .form-group
+                  label Job Type *
+                  select(name="type" required)
+                    each t in JOB_TYPES
+                      option(value=t selected=(v('type', 'Full-time') === t))= t
+
+              .form-row
+                .form-group
+                  label Contract Terms *
+                  select(name="contractTerms" required)
+                    each c in CONTRACT_TERMS
+                      option(value=c selected=(v('contractTerms', 'Permanent') === c))= c
+                .form-group
+                  label Number of Vacancies
+                  input(
+                    type="number"
+                    name="vacancies"
+                    min="1"
+                    value=v('vacancies', 1)
+                  )
+
+              .form-row
+                .form-group
+                  label Duty Station
+                  input(
+                    type="text"
+                    name="location"
+                    maxlength="150"
+                    value=v('location', 'MUBS Main Campus, Nakawa')
+                  )
+                .form-group
+                  label Visibility *
+                  select(name="visibility" required)
+                    option(value="public" selected=(v('visibility', 'public') === 'public'))
+                      | Public — visible to everyone
+                    option(value="internal" selected=(v('visibility') === 'internal'))
+                      | Internal — MUBS staff only (@mubs.ac.ug)
+                  small.text-muted Internal jobs won't appear in public search.
+
+            //- --------------------------------------------------------
+            //- APPLICATION DETAILS
+            //- --------------------------------------------------------
+            .form-card
+              h2.section-heading Application Details
+
+              .form-row
+                .form-group
+                  label Application Deadline *
+                  input(
+                    type="date"
+                    name="deadline"
+                    required
+                    value=deadlineVal
+                  )
+                .form-group
+                  label Contact Email *
+                  input(
+                    type="email"
+                    name="contactEmail"
+                    required
+                    maxlength="160"
+                    placeholder="hr@mubs.ac.ug"
+                    value=v('contactEmail')
+                  )
+
+              .form-group
+                label Contact Phone
+                input(
+                  type="tel"
+                  name="contactPhone"
+                  maxlength="30"
+                  placeholder="+256 414 338 131"
+                  value=v('contactPhone')
+                )
+
+            //- --------------------------------------------------------
+            //- DESCRIPTION
+            //- --------------------------------------------------------
+            .form-card
+              h2.section-heading Job Description
+
+              .form-group
+                label Description *
+                small.text-muted Include duties, qualifications, experience, and terms of service
+                #descriptionEditor.editor
+
+            //- --------------------------------------------------------
+            //- STAGES — create only
+            //- --------------------------------------------------------
+            if !isEdit
+              .form-card
+                h2.section-heading Application Stages
+
+                input(type="hidden" name="stages" id="stagesInput")
+
+                .stages-editor
+                  .stages-header
+                    p.stages-hint
+                      | Define the workflow this job goes through. Applicants move through
+                      | these stages in order. You can edit them later from the job's page.
+
+                  .stages-actions-top
+                    button.btn.btn-sm.btn-outline(type="button" id="addStageBtn")
+                      i.fas.fa-plus
+                      |  Add Stage
+                    button.btn.btn-sm.btn-ghost(type="button" id="resetStagesBtn")
+                      i.fas.fa-undo
+                      |  Reset to Default
+
+                  #stagesList.stages-list(data-initial=stagesInitial)
+
+          //- ============================================================
+          //- RIGHT COLUMN — sticky actions sidebar
+          //- ============================================================
+          aside.form-sidebar
+            .sidebar-card
+              h3= sidebarHeading
+              p.sidebar-help= sidebarHelp
+
+              .form-actions-vertical
+                button.btn.btn-primary.btn-block(type="submit")
+                  i.fas.fa-check
+                  |  #{submitLabel}
+                a.btn.btn-ghost.btn-block(href=cancelHref) Cancel
+
+              if isEdit
+                hr.sidebar-divider
+                p.sidebar-help Need to change the workflow?
+                a.btn.btn-outline.btn-block(href=`/jobs/${job.id}/stages`)
+                  i.fas.fa-layer-group
+                  |  Manage Stages
+
+block scripts
+  script(src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js")
+  script.
+    /* ============================================================ */
+    /* Quill                                                        */
+    /* ============================================================ */
+    const toolbarOptions = [
+      [{ header: [1, 2, 3, false] }],
+      ['bold', 'italic', 'underline', 'strike'],
+      [{ list: 'ordered' }, { list: 'bullet' }],
+      [{ indent: '-1' }, { indent: '+1' }],
+      ['blockquote', 'code-block'],
+      ['link'],
+      ['clean']
+    ];
+
+    const quill = new Quill('#descriptionEditor', {
+      theme: 'snow',
+      placeholder: 'Describe the position — duties, required qualifications, experience, and terms of service...',
+      modules: { toolbar: toolbarOptions }
+    });
+
+    window.quill = quill;
+
+    const existingDescription = document.getElementById('descriptionInput').value;
+    if (existingDescription) {
+      quill.clipboard.dangerouslyPasteHTML(existingDescription);
+    }
+
+    quill.on('text-change', () => {
+      document.getElementById('descriptionInput').value = quill.root.innerHTML;
+    });
+
+    /* ============================================================ */
+    /* Stages editor (create page only)                             */
+    /* ============================================================ */
+    const stagesListEl = document.getElementById('stagesList');
+    if (stagesListEl) {
+      (function () {
+        const DEFAULT_STAGES = [
+          { key: 'pending',     label: 'Pending',     color: 'warning' },
+          { key: 'reviewed',    label: 'Reviewed',    color: 'primary' },
+          { key: 'shortlisted', label: 'Shortlisted', color: 'info'    },
+          { key: 'interviewed', label: 'Interviewed', color: 'info'    },
+          { key: 'accepted',    label: 'Accepted',    color: 'success' },
+          { key: 'rejected',    label: 'Rejected',    color: 'danger'  }
+        ];
+
+        const listEl   = stagesListEl;
+        const addBtn   = document.getElementById('addStageBtn');
+        const resetBtn = document.getElementById('resetStagesBtn');
+        const inputEl  = document.getElementById('stagesInput');
+
+        let stages;
+        try {
+          const parsed = JSON.parse(listEl.dataset.initial || '[]');
+          stages = Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_STAGES.slice();
+        } catch {
+          stages = DEFAULT_STAGES.slice();
+        }
+
+        function slugKey(label) {
+          return String(label || '')
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '_')
+            .replace(/^_+|_+$/g, '') || 'stage';
+        }
+
+        function render() {
+          listEl.innerHTML = '';
+          stages.forEach((s, i) => {
+            const row = document.createElement('div');
+            row.className = 'stage-row';
+            row.innerHTML = `
+              <span class="drag-handle" title="Reorder (coming soon)">⋮⋮</span>
+              <input type="text"
+                     value="${(s.label || '').replace(/"/g, '&quot;')}"
+                     data-idx="${i}" data-field="label"
+                     placeholder="Stage name">
+              <select class="stage-color-select stage-color-${s.color || 'primary'}"
+                      data-idx="${i}" data-field="color">
+                <option value="warning"  ${s.color === 'warning'  ? 'selected' : ''}>Warning</option>
+                <option value="primary"  ${s.color === 'primary'  ? 'selected' : ''}>Primary</option>
+                <option value="info"     ${s.color === 'info'     ? 'selected' : ''}>Info</option>
+                <option value="success"  ${s.color === 'success'  ? 'selected' : ''}>Success</option>
+                <option value="danger"   ${s.color === 'danger'   ? 'selected' : ''}>Danger</option>
+              </select>
+              <button type="button" class="remove-btn" data-idx="${i}" title="Remove">×</button>
+            `;
+            listEl.appendChild(row);
+          });
+        }
+
+        function serialize() {
+          const out = stages
+            .map((s) => ({
+              key:   slugKey(s.label),
+              label: (s.label || '').trim() || 'Stage',
+              color: s.color || 'primary'
+            }))
+            .filter((s) => s.label);
+
+          const seen = new Set();
+          out.forEach((s) => {
+            let k = s.key, n = 2;
+            while (seen.has(k)) k = `${s.key}_${n++}`;
+            s.key = k;
+            seen.add(k);
+          });
+
+          inputEl.value = JSON.stringify(out);
+        }
+
+        listEl.addEventListener('input', (e) => {
+          const idx = parseInt(e.target.dataset.idx, 10);
+          const field = e.target.dataset.field;
+          if (isNaN(idx) || !field) return;
+          stages[idx][field] = e.target.value;
+          serialize();
+        });
+
+        listEl.addEventListener('change', (e) => {
+          const idx = parseInt(e.target.dataset.idx, 10);
+          const field = e.target.dataset.field;
+          if (isNaN(idx) || !field) return;
+          stages[idx][field] = e.target.value;
+          if (field === 'color') {
+            e.target.className = 'stage-color-select stage-color-' + e.target.value;
+          }
+          serialize();
+        });
+
+        listEl.addEventListener('click', (e) => {
+          const rm = e.target.closest('.remove-btn');
+          if (!rm) return;
+          const idx = parseInt(rm.dataset.idx, 10);
+          if (isNaN(idx)) return;
+          stages.splice(idx, 1);
+          if (stages.length === 0) stages = DEFAULT_STAGES.slice();
+          render();
+          serialize();
+        });
+
+        addBtn.addEventListener('click', () => {
+          stages.push({ label: 'New Stage', color: 'primary' });
+          render();
+          serialize();
+        });
+
+        resetBtn.addEventListener('click', () => {
+          if (!confirm('Reset to the default stages? Your custom stages will be lost.')) return;
+          stages = DEFAULT_STAGES.slice();
+          render();
+          serialize();
+        });
+
+        render();
+        serialize();
+      })();
+    }
+
+  script(src="/js/job-form.js" defer)

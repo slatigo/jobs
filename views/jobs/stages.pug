@@ -1,0 +1,268 @@
+extends ../layout
+
+block content
+  section.page-header
+    .container
+      p.breadcrumb
+        a(href="/jobs") Jobs
+        span.sep /
+        a(href=`/jobs/${job.id}`)= job.title
+        span.sep /
+        span Stages
+      h1 Manage Application Stages
+      p Configure the workflow for "#{job.title}"
+
+  section.form-section
+    .container
+      .form-card
+        form(action=`/jobs/${job.id}/stages` method="POST" id="stagesForm")
+          input(type="hidden" name="stages" id="stagesInput")
+
+          .stages-editor
+            .stages-header
+              h3 Stages for this Position
+              p.stages-hint
+                | These are the stages applicants move through. Use the arrows to
+                | reorder; the order here becomes the order on the applications page.
+
+            .stages-actions-top
+              button.btn.btn-sm.btn-outline(type="button" id="addStageBtn")
+                i.fas.fa-plus
+                |  Add Stage
+              button.btn.btn-sm.btn-ghost(type="button" id="resetStagesBtn")
+                i.fas.fa-undo
+                |  Reset to Default
+
+            #stagesList.stages-list(data-initial=JSON.stringify(stages))
+
+          //- Shown only when a removal of a used stage occurs
+          #deletionPanel.deletion-panel(style="display:none")
+            i.fas.fa-exclamation-triangle
+            div
+              strong Some applications need to be moved
+              p#deletionMessage
+              .form-group
+                label Move those applications to:
+                select#fallbackStageSelect
+
+          .form-actions
+            a.btn.btn-ghost(href=`/jobs/${job.id}`) Cancel
+            button.btn.btn-primary(type="submit")
+              i.fas.fa-check
+              | Save Stages
+
+block scripts
+  script.
+    (function () {
+      const counts = !{JSON.stringify(countMap)};
+
+      const listEl   = document.getElementById('stagesList');
+      const inputEl  = document.getElementById('stagesInput');
+      const addBtn   = document.getElementById('addStageBtn');
+      const resetBtn = document.getElementById('resetStagesBtn');
+
+      const delPanel = document.getElementById('deletionPanel');
+      const delMsg   = document.getElementById('deletionMessage');
+      const fallback = document.getElementById('fallbackStageSelect');
+
+      let stages = [];
+      try {
+        stages = JSON.parse(listEl.dataset.initial || '[]');
+      } catch { stages = []; }
+
+      const DEFAULT_STAGES = [
+        { key: 'pending',     label: 'Pending',     color: 'warning' },
+        { key: 'reviewed',    label: 'Reviewed',    color: 'primary' },
+        { key: 'shortlisted', label: 'Shortlisted', color: 'info'    },
+        { key: 'interviewed', label: 'Interviewed', color: 'info'    },
+        { key: 'accepted',    label: 'Accepted',    color: 'success' },
+        { key: 'rejected',    label: 'Rejected',    color: 'danger'  }
+      ];
+
+      function slugKey(label) {
+        return String(label || '')
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '_')
+          .replace(/^_+|_+$/g, '') || 'stage';
+      }
+
+      function render() {
+        listEl.innerHTML = '';
+
+        stages.forEach((s, i) => {
+          const appCount = counts[s.key] || 0;
+          const isFirst  = i === 0;
+          const isLast   = i === stages.length - 1;
+
+          const row = document.createElement('div');
+          row.className = 'stage-row';
+          row.innerHTML = `
+            <div class="stage-reorder">
+              <button type="button"
+                      class="arrow-btn"
+                      data-idx="${i}"
+                      data-dir="up"
+                      title="Move up"
+                      ${isFirst ? 'disabled' : ''}>
+                <i class="fas fa-chevron-up"></i>
+              </button>
+              <button type="button"
+                      class="arrow-btn"
+                      data-idx="${i}"
+                      data-dir="down"
+                      title="Move down"
+                      ${isLast ? 'disabled' : ''}>
+                <i class="fas fa-chevron-down"></i>
+              </button>
+            </div>
+
+            <input type="text"
+                   value="${(s.label || '').replace(/"/g, '&quot;')}"
+                   data-idx="${i}" data-field="label"
+                   placeholder="Stage name">
+
+            <select class="stage-color-select stage-color-${s.color || 'primary'}"
+                    data-idx="${i}" data-field="color">
+              <option value="warning"  ${s.color === 'warning'  ? 'selected' : ''}>Warning</option>
+              <option value="primary"  ${s.color === 'primary'  ? 'selected' : ''}>Primary</option>
+              <option value="info"     ${s.color === 'info'     ? 'selected' : ''}>Info</option>
+              <option value="success"  ${s.color === 'success'  ? 'selected' : ''}>Success</option>
+              <option value="danger"   ${s.color === 'danger'   ? 'selected' : ''}>Danger</option>
+            </select>
+
+            <span class="stage-count" title="Applications in this stage">${appCount}</span>
+
+            <button type="button" class="remove-btn" data-idx="${i}" title="Remove">×</button>
+          `;
+          row.dataset.stageId = s.id || '';
+          row.dataset.stageKey = s.key || '';
+          listEl.appendChild(row);
+        });
+      }
+
+      function serialize() {
+        const out = stages.map((s) => ({
+          id: s.id || null,
+          key: slugKey(s.label),
+          label: (s.label || '').trim() || 'Stage',
+          color: s.color || 'primary',
+          isTerminal: s.isTerminal || false
+        }));
+        inputEl.value = JSON.stringify(out);
+        checkDeleted();
+      }
+
+      function checkDeleted() {
+        const keptIds = new Set(stages.map((s) => String(s.id)).filter(Boolean));
+
+        if (!checkDeleted.original) {
+          checkDeleted.original = stages.map((s) => ({ ...s }));
+        }
+
+        const orphans = checkDeleted.original.filter(
+          (orig) => orig.id && !keptIds.has(String(orig.id))
+        );
+        const withCounts = orphans.filter((o) => (counts[o.key] || 0) > 0);
+
+        if (withCounts.length === 0) {
+          delPanel.style.display = 'none';
+          return;
+        }
+
+        delPanel.style.display = 'flex';
+        delMsg.textContent =
+          withCounts.map((o) => `"${o.label}" holds ${counts[o.key]} application(s)`).join('; ') +
+          '. Choose where to move them before saving.';
+
+        fallback.innerHTML = '';
+        stages.forEach((s) => {
+          const opt = document.createElement('option');
+          opt.value = s.key;
+          opt.textContent = s.label;
+          fallback.appendChild(opt);
+        });
+      }
+
+      /* ---- Text / select edits ---- */
+      listEl.addEventListener('input', (e) => {
+        const idx = parseInt(e.target.dataset.idx, 10);
+        const field = e.target.dataset.field;
+        if (isNaN(idx) || !field) return;
+        stages[idx][field] = e.target.value;
+        serialize();
+      });
+
+      listEl.addEventListener('change', (e) => {
+        const idx = parseInt(e.target.dataset.idx, 10);
+        const field = e.target.dataset.field;
+        if (isNaN(idx) || !field) return;
+        stages[idx][field] = e.target.value;
+        if (field === 'color') {
+          e.target.className = 'stage-color-select stage-color-' + e.target.value;
+        }
+        serialize();
+      });
+
+      /* ---- Reorder via arrows ---- */
+      listEl.addEventListener('click', (e) => {
+        const arrow = e.target.closest('.arrow-btn');
+        if (!arrow || arrow.disabled) return;
+
+        const idx = parseInt(arrow.dataset.idx, 10);
+        const dir = arrow.dataset.dir;
+        if (isNaN(idx)) return;
+
+        if (dir === 'up' && idx > 0) {
+          [stages[idx - 1], stages[idx]] = [stages[idx], stages[idx - 1]];
+        } else if (dir === 'down' && idx < stages.length - 1) {
+          [stages[idx + 1], stages[idx]] = [stages[idx], stages[idx + 1]];
+        } else {
+          return;
+        }
+
+        render();
+        serialize();
+      });
+
+      /* ---- Remove stage ---- */
+      listEl.addEventListener('click', (e) => {
+        const rm = e.target.closest('.remove-btn');
+        if (!rm) return;
+        const idx = parseInt(rm.dataset.idx, 10);
+        if (isNaN(idx)) return;
+        stages.splice(idx, 1);
+        if (stages.length === 0) stages = DEFAULT_STAGES.slice();
+        render();
+        serialize();
+      });
+
+      /* ---- Add stage ---- */
+      addBtn.addEventListener('click', () => {
+        stages.push({ label: 'New Stage', color: 'primary', id: null });
+        render();
+        serialize();
+      });
+
+      /* ---- Reset to default ---- */
+      resetBtn.addEventListener('click', () => {
+        if (!confirm('Reset to the default stages? Custom stages will be lost.')) return;
+        checkDeleted.original = [];
+        stages = DEFAULT_STAGES.map((s) => ({ ...s, id: null }));
+        render();
+        serialize();
+      });
+
+      /* ---- Submit — include deletedHandling if needed ---- */
+      document.getElementById('stagesForm').addEventListener('submit', function (e) {
+        if (delPanel.style.display === 'flex' && fallback.value) {
+          const hidden = document.createElement('input');
+          hidden.type = 'hidden';
+          hidden.name = 'deletedHandling[stageKey]';
+          hidden.value = fallback.value;
+          this.appendChild(hidden);
+        }
+      });
+
+      render();
+      serialize();
+    })();

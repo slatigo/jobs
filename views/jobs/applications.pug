@@ -30,33 +30,34 @@ block content
           a.btn.btn-ghost(href=`/jobs/${job.id}`)
             i.fas.fa-arrow-left
             | Back to Job
+          a.btn.btn-ghost(href=`/jobs/${job.id}/stages`)
+            i.fas.fa-layer-group
+            | Manage Stages
 
       //- ============================================================
-      //- STATUS TABS
+      //- STATUS TABS (built from the job's stages)
       //- ============================================================
       nav.status-tabs
-        -
-          const tabs = [
-            { key: 'all',         label: 'All',         icon: 'fa-list' },
-            { key: 'pending',     label: 'Pending',     icon: 'fa-hourglass-half' },
-            { key: 'reviewed',    label: 'Reviewed',    icon: 'fa-eye' },
-            { key: 'shortlisted', label: 'Shortlisted', icon: 'fa-star' },
-            { key: 'accepted',    label: 'Accepted',    icon: 'fa-check-circle' },
-            { key: 'rejected',    label: 'Rejected',    icon: 'fa-times-circle' }
-          ]
-        each tab in tabs
+        a.status-tab(
+          href=`/jobs/${job.id}/applications`
+          class=(activeFilter === 'all' ? 'active' : '')
+        )
+          i.fas.fa-list
+          span All
+          span.tab-count= counts.all
+
+        each stage in stages
           a.status-tab(
-            href=(tab.key === 'all' ? `/jobs/${job.id}/applications` : `/jobs/${job.id}/applications?status=${tab.key}`)
-            class=(activeFilter === tab.key ? 'active' : '')
+            href=`/jobs/${job.id}/applications?status=${stage.key}`
+            class=(activeFilter === stage.key ? 'active' : '')
           )
-            i.fas(class=tab.icon)
-            span= tab.label
-            span.tab-count= counts[tab.key]
+            i.fas.fa-circle
+            span= stage.label
+            span.tab-count= counts[stage.key] || 0
 
       //- ============================================================
       //- BULK BAR
       //- ============================================================
-      - const nonShortlisted = counts.pending + counts.reviewed
       if counts.all > 0
         .bulk-bar
           .bulk-left
@@ -65,47 +66,31 @@ block content
             span#selectedCount.selected-count No rows selected
 
           .bulk-right
-            if nonShortlisted > 0
-              button.btn.btn-sm.btn-danger(
+            //- Quick "reject everything in this tab"
+            if activeFilter !== 'all' && activeFilter !== 'rejected' && counts[activeFilter] > 0
+              - const activeStageDef = stages.find(s => s.key === activeFilter)
+              button.btn.btn-sm.btn-ghost(
                 type="button"
-                onclick=`bulkReject('non-shortlisted', ${nonShortlisted})`
+                onclick=`bulkMove('${activeFilter}', ${counts[activeFilter]}, 'rejected', 'Rejected')`
               )
-                i.fas.fa-users-slash
-                | Reject Non-Shortlisted (#{nonShortlisted})
+                i.fas.fa-ban
+                | Reject All #{activeStageDef ? activeStageDef.label : activeFilter}
 
-            if activeFilter === 'pending' && counts.pending > 0
-              button.btn.btn-sm.btn-danger(
-                type="button"
-                onclick=`bulkReject('pending', ${counts.pending})`
-              )
-                i.fas.fa-users-slash
-                | Reject All Pending (#{counts.pending})
+            //- Stage picker for the current selection
+            .bulk-stage-picker
+              select#bulkStageSelect.stage-select
+                option(value="") Move selected to…
+                each stage in stages
+                  option(value=stage.key)= stage.label
 
-            if activeFilter === 'reviewed' && counts.reviewed > 0
-              button.btn.btn-sm.btn-danger(
+              button.btn.btn-sm.btn-primary(
                 type="button"
-                onclick=`bulkReject('reviewed', ${counts.reviewed})`
-              )
-                i.fas.fa-users-slash
-                | Reject All Reviewed (#{counts.reviewed})
-
-            if activeFilter === 'shortlisted' && counts.shortlisted > 0
-              button.btn.btn-sm.btn-danger(
-                type="button"
-                onclick=`bulkReject('shortlisted', ${counts.shortlisted})`
-              )
-                i.fas.fa-users-slash
-                | Reject All Shortlisted (#{counts.shortlisted})
-
-            button.btn.btn-sm.btn-danger(
-                type="button"
-                id="bulkRejectSelected"
+                id="bulkMoveSelected"
                 disabled
-                title="Select at least one application first"
-                onclick="bulkRejectSelected()"
+                onclick="bulkMoveSelected()"
               )
-                i.fas.fa-check-square
-                | Reject Selected
+                i.fas.fa-arrow-right
+                | Apply
 
       //- ============================================================
       //- APPLICATIONS TABLE
@@ -125,7 +110,13 @@ block content
 
             tbody
               each a in applications
-                //- Main row
+                - const stageDef   = stages.find(s => s.key === a.status)
+                - const stageColor = stageDef ? stageDef.color : 'muted'
+                - const stageLabel = stageDef ? stageDef.label : a.status
+
+                //- ============================================================
+                //- MAIN ROW
+                //- ============================================================
                 tr.app-row(
                   class=`status-${a.status}`
                   data-app-id=a.id
@@ -156,7 +147,7 @@ block content
                     = appliedAt
 
                   td
-                    span.pill(class=`pill-${a.status === 'accepted' ? 'success' : a.status === 'rejected' ? 'danger' : a.status === 'shortlisted' ? 'info' : a.status === 'reviewed' ? 'primary' : 'warning'}`)= a.status
+                    span.pill(class=`pill-${stageColor}`)= stageLabel
 
                   td.th-hide-md
                     if a.attachmentUrl
@@ -172,84 +163,40 @@ block content
 
                   td.td-actions
                     .quick-actions
-                      //- PENDING
-                      if a.status === 'pending'
-                        button.icon-btn.icon-btn-info(
-                          type="button" title="Shortlist"
-                          onclick=`changeStatus(${a.id}, 'shortlisted', '${a.fullName.replace(/'/g, "\\'")}')`
-                        )
-                          i.fas.fa-star
-                        button.icon-btn.icon-btn-success(
-                          type="button" title="Accept"
-                          onclick=`changeStatus(${a.id}, 'accepted', '${a.fullName.replace(/'/g, "\\'")}')`
-                        )
-                          i.fas.fa-check
-                        button.icon-btn.icon-btn-danger(
-                          type="button" title="Reject"
-                          onclick=`changeStatus(${a.id}, 'rejected', '${a.fullName.replace(/'/g, "\\'")}')`
-                        )
-                          i.fas.fa-times
+                      //- Render a button for every stage except the current one.
+                      //- Icons: accept → check, reject → times, others → arrow.
+                      each target in stages
+                        if target.key !== a.status
+                          - const isAccept   = target.key === 'accepted'
+                          - const isReject   = target.key === 'rejected'
+                          - const btnClass   = isAccept
+                            ? 'icon-btn-success'
+                            : (isReject ? 'icon-btn-danger' : (
+                                target.color === 'primary' ? 'icon-btn-info' : ''
+                              ))
+                          - const btnTitle   = isAccept
+                            ? 'Accept'
+                            : (isReject ? 'Reject' : `Move to ${target.label}`)
+                          - const safeName   = a.fullName.replace(/'/g, "\\'")
+                          - const safeLabel  = target.label.replace(/'/g, "\\'")
 
-                      //- REVIEWED
-                      else if a.status === 'reviewed'
-                        button.icon-btn.icon-btn-info(
-                          type="button" title="Shortlist"
-                          onclick=`changeStatus(${a.id}, 'shortlisted', '${a.fullName.replace(/'/g, "\\'")}')`
-                        )
-                          i.fas.fa-star
-                        button.icon-btn.icon-btn-success(
-                          type="button" title="Accept"
-                          onclick=`changeStatus(${a.id}, 'accepted', '${a.fullName.replace(/'/g, "\\'")}')`
-                        )
-                          i.fas.fa-check
-                        button.icon-btn.icon-btn-danger(
-                          type="button" title="Reject"
-                          onclick=`changeStatus(${a.id}, 'rejected', '${a.fullName.replace(/'/g, "\\'")}')`
-                        )
-                          i.fas.fa-times
+                          button.icon-btn(
+                            class=btnClass
+                            type="button"
+                            title=btnTitle
+                            onclick=`changeStatus(${a.id}, '${target.key}', '${safeName}', '${safeLabel}')`
+                          )
+                            if isAccept
+                              i.fas.fa-check
+                            else if isReject
+                              i.fas.fa-times
+                            else
+                              i.fas.fa-arrow-right
 
-                      //- SHORTLISTED
-                      else if a.status === 'shortlisted'
-                        button.icon-btn.icon-btn-success(
-                          type="button" title="Accept"
-                          onclick=`changeStatus(${a.id}, 'accepted', '${a.fullName.replace(/'/g, "\\'")}')`
-                        )
-                          i.fas.fa-check
-                        button.icon-btn.icon-btn-danger(
-                          type="button" title="Reject"
-                          onclick=`changeStatus(${a.id}, 'rejected', '${a.fullName.replace(/'/g, "\\'")}')`
-                        )
-                          i.fas.fa-times
-                        button.icon-btn(
-                          type="button" title="Back to Reviewed"
-                          onclick=`changeStatus(${a.id}, 'reviewed', '${a.fullName.replace(/'/g, "\\'")}')`
-                        )
-                          i.fas.fa-undo
-
-                      //- ACCEPTED
-                      else if a.status === 'accepted'
-                        button.icon-btn(
-                          type="button" title="Undo (back to Shortlisted)"
-                          onclick=`changeStatus(${a.id}, 'shortlisted', '${a.fullName.replace(/'/g, "\\'")}')`
-                        )
-                          i.fas.fa-undo
-                        button.icon-btn.icon-btn-danger(
-                          type="button" title="Reject"
-                          onclick=`changeStatus(${a.id}, 'rejected', '${a.fullName.replace(/'/g, "\\'")}')`
-                        )
-                          i.fas.fa-times
-
-                      //- REJECTED
-                      else if a.status === 'rejected'
-                        button.icon-btn(
-                          type="button" title="Reconsider"
-                          onclick=`changeStatus(${a.id}, 'pending', '${a.fullName.replace(/'/g, "\\'")}')`
-                        )
-                          i.fas.fa-undo
-
-                      //- Expand
+                      //- Expand drawer
                       button.icon-btn.icon-btn-toggle(
-                        type="button" title="Show details"
+                        type="button"
+                        title="Show details"
                         data-expand-row=a.id
                       )
                         i.fas.fa-chevron-down
@@ -260,6 +207,7 @@ block content
                 tr.app-detail-row(id=`details-${a.id}`)
                   td(colspan="7")
                     .detail-drawer
+
                       if a.coverLetter
                         .detail-col
                           .detail-label
@@ -274,11 +222,17 @@ block content
                             | History
                           ul.history-list
                             each h in a.history
+                              - const toStageDef   = stages.find(s => s.key === h.toStatus)
+                              - const fromStageDef = stages.find(s => s.key === h.fromStatus)
+
                               li.history-item
                                 .history-line
-                                  span.status-from= h.fromStatus || '—'
+                                  span.status-from
+                                    = fromStageDef ? fromStageDef.label : (h.fromStatus || '—')
                                   i.fas.fa-arrow-right
-                                  span.status-to(class=`status-${h.toStatus}`)= h.toStatus
+                                  span.status-to(class=`status-${toStageDef ? toStageDef.color : 'muted'}`)
+                                    = toStageDef ? toStageDef.label : h.toStatus
+
                                 .history-meta
                                   span
                                     i.fas.fa-user
@@ -291,22 +245,9 @@ block content
                                     span.history-source
                                       i.fas.fa-layer-group
                                       = h.source
+
                                 if h.reason
                                   .history-reason= h.reason
-
-        //- ============================================================
-        //- HIDDEN FORMS (JS fills these before submitting)
-        //- ============================================================
-        form#statusForm(action="" method="POST" style="display:none")
-          input(type="hidden" name="returnTo" value=`/jobs/${job.id}/applications?status=${activeFilter}`)
-          input(type="hidden" name="status" id="statusFormStatus")
-          input(type="hidden" name="reason" id="statusFormReason")
-
-        form#bulkForm(action=`/jobs/${job.id}/applications/bulk-reject` method="POST" style="display:none")
-          input(type="hidden" name="scope" id="bulkFormScope")
-          input(type="hidden" name="reason" id="bulkFormReason")
-          input(type="hidden" name="returnTo" value=`/jobs/${job.id}/applications?status=${activeFilter}`)
-          div#bulkFormIds
 
       else
         .empty-state
@@ -315,7 +256,8 @@ block content
             h3 No applications yet
             p This job hasn't received any applications.
           else
-            h3 No #{activeFilter} applications
+            - const emptyStageDef = stages.find(s => s.key === activeFilter)
+            h3 No #{emptyStageDef ? emptyStageDef.label : activeFilter} applications
             p No applications with this status.
             a.btn.btn-primary(href=`/jobs/${job.id}/applications`) View All Applications
 

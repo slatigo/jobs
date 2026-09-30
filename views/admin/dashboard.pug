@@ -54,15 +54,13 @@ block content
         a.btn.btn-primary(href="/admin/users")
           i.fas.fa-users
           |  Manage Users
-        a.btn.btn-primary(href="/admin/jobs")
+        a.btn.btn-primary(href="/jobs")
           i.fas.fa-briefcase
           |  Manage Jobs
         a.btn.btn-primary(href="/admin/departments")
           i.fas.fa-university
           |  Departments
-        a.btn.btn-outline(href="/admin/applications")
-          i.fas.fa-file-alt
-          |  All Applications
+        
         a.btn.btn-outline(href="/jobs/new")
           i.fas.fa-plus
           |  Post a Job
@@ -74,7 +72,7 @@ block content
         .admin-panel
           .admin-panel-head
             h2 Recent Jobs
-            a.view-all(href="/admin/jobs") View all →
+            a.view-all(href="/jobs") View all →
 
           table.admin-table
             thead
@@ -102,46 +100,9 @@ block content
                     - const postedAt = new Date(job.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
                     = postedAt
 
+      
       //- ============================================================
-      //- RECENT APPLICATIONS
-      //- ============================================================
-      if recentApplications && recentApplications.length
-        .admin-panel
-          .admin-panel-head
-            h2 Recent Applications
-            a.view-all(href="/admin/applications") View all →
-
-          table.admin-table
-            thead
-              tr
-                th Applicant
-                th Job
-                th Status
-                th Applied
-
-            tbody
-              each app in recentApplications
-                tr
-                  td
-                    if app.applicant
-                      strong= app.applicant.name
-                      br
-                      small.text-muted-inline= app.applicant.email
-                    else
-                      span.text-muted-inline —
-                  td
-                    if app.job
-                      a(href=`/jobs/${app.job.id}`)= app.job.title
-                    else
-                      span.text-muted-inline —
-                  td
-                    span.pill(class=`pill-${app.status === 'accepted' ? 'success' : app.status === 'rejected' ? 'danger' : app.status === 'shortlisted' ? 'info' : app.status === 'reviewed' ? 'primary' : 'warning'}`)= app.status
-                  td
-                    - const appliedAt = new Date(app.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-                    = appliedAt
-
-      //- ============================================================
-      //- EMPTY STATE (if no data at all)
+      //- EMPTY STATE
       //- ============================================================
       if (!recentJobs || !recentJobs.length) && (!recentApplications || !recentApplications.length)
         .empty-state

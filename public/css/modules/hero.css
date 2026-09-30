@@ -18,10 +18,8 @@
 .hero-content {
   position: relative;
   z-index: 1;
-  display: grid;
-  grid-template-columns: 1.2fr 1fr;
-  gap: 60px;
-  align-items: center;
+  display: block;
+  max-width: 900px;
 }
 .hero-badge {
   display: inline-flex;

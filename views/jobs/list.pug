@@ -8,94 +8,100 @@ block content
 
   section.jobs-list
     .container
-      .jobs-layout
-        aside.filters
-          form.filter-form(action="/jobs" method="GET")
-            //- Title search — visible to everyone
-            .filter-group
-              label
-                i.fas.fa-search
-                | Search
-              input(
-                type="text"
-                name="search"
-                value=filters.search
-                placeholder="Search by job title..."
-              )
 
-            //- Department filter — admin only
-            if isAdmin
-              .filter-group
-                label
-                  i.fas.fa-university
-                  | Department / Faculty
-                select(name="department")
-                  option(value="All") All Departments
-                  each d in departments
-                    option(value=d.slug selected=filters.department === d.slug)= d.name
+      //- ============================================================
+      //- FILTER BAR (top of page)
+      //- ============================================================
+      form.filter-bar(action="/jobs" method="GET")
+        .filter-bar-row
 
-            .filter-group
-              label
-                i.fas.fa-clock
-                | Job Type
-              select(name="type")
-                option(value="All") All Types
-                each t in JOB_TYPES
-                  option(value=t selected=filters.type === t)= t
+          //- Search (takes the widest slot)
+          .filter-field.filter-field-search
+            i.fas.fa-search
+            input(
+              type="text"
+              name="search"
+              value=filters.search
+              placeholder="Search by job title, keyword, or reference..."
+              autocomplete="off"
+            )
 
-            .filter-group
-              label
-                i.fas.fa-file-contract
-                | Contract Terms
-              select(name="terms")
-                option(value="All") All Terms
-                each c in CONTRACT_TERMS
-                  option(value=c selected=filters.terms === c)= c
+          //- Department (admin-only)
+          if isAdmin
+            .filter-field
+              i.fas.fa-university
+              select(name="department")
+                option(value="All") All Departments
+                each d in departments
+                  option(value=d.slug selected=filters.department === d.slug)= d.name
 
-            .filter-group
-              label
-                i.fas.fa-map-marker-alt
-                | Location
-              input(type="text" name="location" value=filters.location placeholder="e.g. Kampala")
+          //- Job Type
+          .filter-field
+            i.fas.fa-clock
+            select(name="type")
+              option(value="All") All Types
+              each t in JOB_TYPES
+                option(value=t selected=filters.type === t)= t
 
-            //- Status filter — admin only
-            if isAdmin
-              .filter-group
-                label
-                  i.fas.fa-archive
-                  | Status
-                select(name="status")
-                  option(value="active" selected=filters.status === 'active') Active
-                  option(value="closed" selected=filters.status === 'closed') Closed
-                  option(value="all"    selected=filters.status === 'all')    All
+          //- Contract Terms
+          .filter-field
+            i.fas.fa-file-contract
+            select(name="terms")
+              option(value="All") All Terms
+              each c in CONTRACT_TERMS
+                option(value=c selected=filters.terms === c)= c
 
-            button.btn.btn-primary.btn-block(type="submit")
-              i.fas.fa-filter
-              | Apply Filters
-            a.btn.btn-ghost.btn-block(href="/jobs") Clear Filters
+          //- Location
+          .filter-field
+            i.fas.fa-map-marker-alt
+            input(
+              type="text"
+              name="location"
+              value=filters.location
+              placeholder="Location"
+            )
 
-        .jobs-content
-          if jobs.length
-            .jobs-grid.jobs-grid-2
-              each job in jobs
-                include ../partials/job-card.pug
+          //- Status (admin-only)
+          if isAdmin
+            .filter-field
+              i.fas.fa-archive
+              select(name="status")
+                option(value="active" selected=filters.status === 'active') Active
+                option(value="closed" selected=filters.status === 'closed') Closed
+                option(value="all"    selected=filters.status === 'all')    All
 
-            if totalPages > 1
-              nav.pagination
-                if currentPage > 1
-                  a.page-link(href=`/jobs?page=${currentPage - 1}&search=${filters.search}&department=${filters.department}&type=${filters.type}&terms=${filters.terms}&location=${filters.location}&status=${filters.status}`)
-                    i.fas.fa-chevron-left
-                each p in Array.from({ length: totalPages }, (_, i) => i + 1)
-                  if p === currentPage
-                    span.page-link.active= p
-                  else
-                    a.page-link(href=`/jobs?page=${p}&search=${filters.search}&department=${filters.department}&type=${filters.type}&terms=${filters.terms}&location=${filters.location}&status=${filters.status}`)= p
-                if currentPage < totalPages
-                  a.page-link(href=`/jobs?page=${currentPage + 1}&search=${filters.search}&department=${filters.department}&type=${filters.type}&terms=${filters.terms}&location=${filters.location}&status=${filters.status}`)
-                    i.fas.fa-chevron-right
-          else
-            .empty-state
-              i.fas.fa-search-minus
-              h3 No vacancies found
-              p Try adjusting your filters or search terms.
-              a.btn.btn-primary(href="/jobs") View All Jobs
+        .filter-bar-actions
+          a.btn.btn-ghost(href="/jobs")
+            i.fas.fa-times
+            | Clear
+          button.btn.btn-primary(type="submit")
+            i.fas.fa-filter
+            | Apply Filters
+
+      //- ============================================================
+      //- RESULTS
+      //- ============================================================
+      if jobs.length
+        .jobs-grid.jobs-grid-3
+          each job in jobs
+            include ../partials/job-card.pug
+
+        if totalPages > 1
+          nav.pagination
+            if currentPage > 1
+              a.page-link(href=`/jobs?page=${currentPage - 1}&search=${filters.search}&department=${filters.department}&type=${filters.type}&terms=${filters.terms}&location=${filters.location}&status=${filters.status}`)
+                i.fas.fa-chevron-left
+            each p in Array.from({ length: totalPages }, (_, i) => i + 1)
+              if p === currentPage
+                span.page-link.active= p
+              else
+                a.page-link(href=`/jobs?page=${p}&search=${filters.search}&department=${filters.department}&type=${filters.type}&terms=${filters.terms}&location=${filters.location}&status=${filters.status}`)= p
+            if currentPage < totalPages
+              a.page-link(href=`/jobs?page=${currentPage + 1}&search=${filters.search}&department=${filters.department}&type=${filters.type}&terms=${filters.terms}&location=${filters.location}&status=${filters.status}`)
+                i.fas.fa-chevron-right
+      else
+        .empty-state
+          i.fas.fa-search-minus
+          h3 No vacancies found
+          p Try adjusting your filters or search terms.
+          a.btn.btn-primary(href="/jobs") View All Jobs

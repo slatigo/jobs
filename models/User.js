@@ -27,8 +27,6 @@ const User = sequelize.define('User', {
     defaultValue: 'applicant'
   },
   phone: { type: DataTypes.STRING(30) },
-  course: { type: DataTypes.STRING(120) },
-  company: { type: DataTypes.STRING(150) },
 
   passwordResetToken: { type: DataTypes.STRING(255), allowNull: true },
   passwordResetExpires: { type: DataTypes.DATE, allowNull: true }

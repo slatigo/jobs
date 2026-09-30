@@ -36,6 +36,7 @@ html(lang="en")
     include partials/footer.pug
     include partials/modal.pug
 
-    script(src="/js/main.js")
-    script(src="/js/modal.js")
+    script(src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js")
+    script(src="/js/main.js" defer)
+    script(src="/js/modal.js" defer)
     block scripts

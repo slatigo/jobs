@@ -95,8 +95,6 @@ app.use((req, res, next) => {
   res.locals.formEmail   = req.flash('formEmail');
   res.locals.formRole    = req.flash('formRole');
   res.locals.formPhone   = req.flash('formPhone');
-  res.locals.formCourse  = req.flash('formCourse');
-  res.locals.formCompany = req.flash('formCompany');
 
   next();
 });
@@ -110,7 +108,7 @@ app.use('/auth',        require('./routes/auth'));
 app.use('/admin',       require('./routes/admin'));
 app.use('/departments', require('./routes/departments'));
 app.use('/files',       require('./routes/files'));
-
+app.use('/j', require('./routes/jobs/share'));
 /* ------------------------------------------------------------------ */
 /* 404 handler                                                         */
 /* ------------------------------------------------------------------ */

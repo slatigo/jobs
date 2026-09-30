@@ -1,12 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const sanitizeHtml = require('sanitize-html');
-const { Job, Department } = require('../../models');
+const { Job, Department, JobStage, sequelize } = require('../../models');
 const { isEmployer } = require('../../middleware/auth');
 const { cleanOpts } = require('../../utils/sanitizeOptions');
 
 /* ================================================================== */
-/* GET /new — show create form                                         */
+/* GET /jobs/new — render the create form                              */
 /* ================================================================== */
 router.get('/new', isEmployer, async (req, res) => {
   try {
@@ -15,11 +15,33 @@ router.get('/new', isEmployer, async (req, res) => {
       order: [['displayOrder', 'ASC'], ['name', 'ASC']]
     });
 
-    res.render('jobs/create', {
+    const form = {
+      jobRef:        req.flash('formJobRef')[0]        || '',
+      refCategory:   req.flash('formRefCategory')[0]   || 'GEN',
+      title:         req.flash('formTitle')[0]         || '',
+      departmentId:  req.flash('formDepartmentId')[0]  || '',
+      grade:         req.flash('formGrade')[0]         || '',
+      type:          req.flash('formType')[0]          || 'Full-time',
+      contractTerms: req.flash('formContractTerms')[0] || 'Permanent',
+      vacancies:     req.flash('formVacancies')[0]     || 1,
+      location:      req.flash('formLocation')[0]      || 'MUBS Main Campus, Nakawa',
+      visibility:    req.flash('formVisibility')[0]    || 'public',
+      deadline:      req.flash('formDeadline')[0]      || '',
+      contactEmail:  req.flash('formContactEmail')[0]  || (req.session.user && req.session.user.email) || '',
+      contactPhone:  req.flash('formContactPhone')[0]  || (req.session.user && req.session.user.phone) || '',
+      description:   req.flash('formDescription')[0]   || '',
+      stages:        req.flash('formStages')[0]        || '[]'
+    };
+
+    res.render('jobs/job-form', {
       title: 'Post a Job',
       departments,
       JOB_TYPES: Job.JOB_TYPES,
-      CONTRACT_TERMS: Job.CONTRACT_TERMS
+      CONTRACT_TERMS: Job.CONTRACT_TERMS,
+      REF_CATEGORIES: Job.REF_CATEGORIES,
+      VISIBILITY: Job.VISIBILITY,
+      form
+      // `job` is intentionally NOT passed — the template's isEdit check sees undefined
     });
   } catch (err) {
     console.error('[JOBS NEW]', err);
@@ -29,60 +51,132 @@ router.get('/new', isEmployer, async (req, res) => {
 });
 
 /* ================================================================== */
-/* POST / — create job                                                 */
+/* POST /jobs — create a job                                           */
 /* ================================================================== */
 router.post('/', isEmployer, async (req, res) => {
+  const wantsJson = req.is('application/json') || req.xhr ||
+                    (req.headers.accept || '').includes('application/json');
+
+  const ok = (payload) => {
+    if (wantsJson) return res.json({ ok: true, ...payload });
+    req.flash('success', payload.message || 'Saved.');
+    return res.redirect(payload.redirect);
+  };
+
+  const bad = (errors, message) => {
+    console.log(errors)
+    if (wantsJson) return res.status(422).json({ ok: false, errors, message });
+    req.flash('error', message || 'Please fix the errors and try again.');
+    return res.redirect('/jobs/new');
+  };
+
+  const {
+    jobRef, refCategory, title, departmentId, location, type,
+    contractTerms, grade, vacancies, description, deadline,
+    contactEmail, contactPhone, visibility, stages: stagesRaw
+  } = req.body;
+
+  /* ---- Collect all validation errors ---- */
+  const errors = {};
+
+  if (!title || !title.trim())               errors.title          = 'Title is required.';
+  if (!departmentId)                         errors.departmentId   = 'Department is required.';
+  if (!description || description === '<p><br></p>')
+                                             errors.description    = 'Description is required.';
+  if (!deadline)                             errors.deadline       = 'Deadline is required.';
+  if (!contactEmail || !contactEmail.trim()) errors.contactEmail   = 'Contact email is required.';
+  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail.trim()))
+                                             errors.contactEmail   = 'Enter a valid email address.';
+
+  if (deadline) {
+    const d = new Date(deadline);
+    if (isNaN(d.getTime())) errors.deadline = 'Invalid date.';
+    else if (d.getTime() <= Date.now()) errors.deadline = 'Deadline must be in the future.';
+  }
+
+  if (Object.keys(errors).length > 0) {
+    return bad(errors, 'Please fix the highlighted fields.');
+  }
+
+  /* ---- Sanitize description ---- */
+  const cleanDescription = sanitizeHtml(description, cleanOpts).trim();
+  if (!cleanDescription || cleanDescription === '<p><br></p>') {
+    return bad({ description: 'Description cannot be empty.' });
+  }
+
+  /* ---- Verify department ---- */
+  const dept = await Department.findByPk(parseInt(departmentId, 10));
+  if (!dept) return bad({ departmentId: 'Invalid department.' });
+
+  /* ---- Normalise enums ---- */
+  const validRefCategory = Job.REF_CATEGORIES.some((c) => c.code === refCategory)
+    ? refCategory : 'GEN';
+  const validVisibility = Job.VISIBILITY.includes(visibility) ? visibility : 'public';
+  const validType = Job.JOB_TYPES.includes(type) ? type : 'Full-time';
+  const validTerms = Job.CONTRACT_TERMS.includes(contractTerms) ? contractTerms : 'Permanent';
+
+  /* ---- Parse stages ---- */
+  let stagesInput = [];
   try {
-    const {
-      jobRef, title, departmentId, location, type, contractTerms,
-      grade, vacancies, description, deadline, contactEmail, contactPhone
-    } = req.body;
+    const parsed = JSON.parse(stagesRaw || '[]');
+    if (Array.isArray(parsed) && parsed.length > 0) stagesInput = parsed;
+  } catch { /* ignore */ }
+  if (stagesInput.length === 0) stagesInput = Job.DEFAULT_STAGES;
 
-    if (!title || !departmentId || !description || !deadline || !contactEmail) {
-      req.flash('error', 'Please fill in all required fields.');
-      return res.redirect('/jobs/new');
-    }
-
-    const cleanDescription = sanitizeHtml(description, cleanOpts).trim();
-    if (!cleanDescription || cleanDescription === '<p><br></p>') {
-      req.flash('error', 'Job description cannot be empty.');
-      return res.redirect('/jobs/new');
-    }
-
-    const dept = await Department.findByPk(parseInt(departmentId, 10));
-    if (!dept) {
-      req.flash('error', 'Invalid department selected.');
-      return res.redirect('/jobs/new');
-    }
-
-    const deadlineDate = new Date(deadline);
-    if (isNaN(deadlineDate.getTime()) || deadlineDate.getTime() <= Date.now()) {
-      req.flash('error', 'Deadline must be a valid future date.');
-      return res.redirect('/jobs/new');
-    }
-
+  /* ---- Save inside a transaction ---- */
+  const t = await sequelize.transaction();
+  try {
     const job = await Job.create({
-      jobRef: jobRef ? jobRef.trim() : null,
+      jobRef: jobRef && jobRef.trim() ? jobRef.trim() : null,
+      refCategory: validRefCategory,
       title: title.trim(),
       departmentId: dept.id,
       location: (location && location.trim()) || 'MUBS Main Campus, Nakawa',
-      type: Job.JOB_TYPES.includes(type) ? type : 'Full-time',
-      contractTerms: Job.CONTRACT_TERMS.includes(contractTerms) ? contractTerms : 'Permanent',
+      type: validType,
+      contractTerms: validTerms,
       grade: grade ? grade.trim() : null,
       vacancies: vacancies ? Math.max(parseInt(vacancies, 10) || 1, 1) : 1,
       description: cleanDescription,
-      deadline: deadlineDate,
+      deadline: new Date(deadline),
       contactEmail: contactEmail.trim(),
       contactPhone: contactPhone ? contactPhone.trim() : null,
+      visibility: validVisibility,
       userId: req.session.user.id
-    });
+    }, { transaction: t });
 
-    req.flash('success', 'Position posted successfully!');
-    res.redirect(`/jobs/${job.id}`);
+    await JobStage.bulkCreate(
+      stagesInput.map((s, i) => ({
+        jobId: job.id,
+        key: s.key,
+        label: s.label,
+        color: s.color || 'primary',
+        order: i,
+        isTerminal: ['accepted', 'rejected'].includes(s.key)
+      })),
+      { transaction: t }
+    );
+
+    await t.commit();
+
+    return ok({
+      message: 'Position posted successfully.',
+      redirect: `/jobs/${job.id}`,
+      job: { id: job.id, title: job.title, jobRef: job.jobRef }
+    });
   } catch (err) {
+    await t.rollback();
     console.error('[JOBS CREATE]', err);
-    req.flash('error', 'Error creating job: ' + err.message);
-    res.redirect('/jobs/new');
+
+    let msg = 'Error creating job.';
+    if (err.name === 'SequelizeUniqueConstraintError') {
+      msg = 'A conflict occurred. Please try again.';
+    } else if (err.name === 'SequelizeValidationError') {
+      msg = 'Please check the information you entered.';
+    } else {
+      msg += ' ' + err.message;
+    }
+
+    return bad({ _global: msg }, msg);
   }
 });
 

@@ -1,16 +1,16 @@
 const express = require('express');
 const router = express.Router({ mergeParams: true });
 const { Op } = require('sequelize');
-const { Job, Application, sequelize } = require('../../models');
+const {
+  Job,
+  Application,
+  JobStage,
+  sequelize
+} = require('../../models');
 const { isAuthenticated } = require('../../middleware/auth');
 const { logStatusChange } = require('../../utils/logStatusChange');
 
-/* ================================================================== */
-/* POST /bulk-reject — bulk reject applications                        */
-/* MUST come before /:appId/status (same parent, different segment     */
-/* count, so no actual conflict — but explicit is better)              */
-/* ================================================================== */
-router.post('/bulk-reject', isAuthenticated, async (req, res) => {
+router.post('/bulk-status', isAuthenticated, async (req, res) => {
   try {
     const job = await Job.findByPk(req.params.id);
     if (!job) {
@@ -19,71 +19,91 @@ router.post('/bulk-reject', isAuthenticated, async (req, res) => {
     }
 
     const isPoster = req.session.user.id === job.userId;
-    const isAdmin = req.session.user.role === 'admin';
+    const isAdmin  = req.session.user.role === 'admin';
 
     if (!isPoster && !isAdmin) {
       req.flash('error', 'You are not allowed to update applications for this job.');
       return res.redirect(`/jobs/${job.id}`);
     }
 
-    const { scope, reason } = req.body;
+    const { targetStage, scope, reason, applicationIds } = req.body;
 
-    let where = { jobId: job.id };
-    let label = '';
+    /* ---- Validate target stage ---- */
+    const stageRows = await JobStage.findAll({ where: { jobId: job.id } });
+    const validKeys = stageRows.length > 0
+      ? stageRows.map((s) => s.key)
+      : Job.DEFAULT_STAGES.map((s) => s.key);
 
-    const selectedIds = req.body.applicationIds;
-    if (scope === 'selected' && Array.isArray(selectedIds) && selectedIds.length > 0) {
-      const intIds = selectedIds.map((id) => parseInt(id, 10)).filter(Boolean);
-      if (intIds.length === 0) {
+    if (!validKeys.includes(targetStage)) {
+      req.flash('error', 'Invalid target stage.');
+      return res.redirect(`/jobs/${job.id}/applications`);
+    }
+
+    /* ---- Build where clause ---- */
+    const where = { jobId: job.id };
+
+    if (scope === 'selected') {
+      const ids = Array.isArray(applicationIds)
+        ? applicationIds.map((id) => parseInt(id, 10)).filter(Boolean)
+        : [parseInt(applicationIds, 10)].filter(Boolean);
+
+      if (ids.length === 0) {
         req.flash('error', 'No valid applications selected.');
         return res.redirect(`/jobs/${job.id}/applications`);
       }
-      where.id = { [Op.in]: intIds };
-      label = `selected (${intIds.length})`;
+      where.id = { [Op.in]: ids };
+    } else if (scope === 'all') {
+      /* no status filter */
     } else {
-      switch (scope) {
-        case 'pending':         where.status = 'pending';                              label = 'pending'; break;
-        case 'reviewed':        where.status = 'reviewed';                             label = 'reviewed'; break;
-        case 'shortlisted':     where.status = 'shortlisted';                          label = 'shortlisted'; break;
-        case 'non-shortlisted': where.status = { [Op.in]: ['pending', 'reviewed'] };   label = 'non-shortlisted'; break;
-        default:
-          req.flash('error', 'Invalid bulk action.');
-          return res.redirect(`/jobs/${job.id}/applications`);
+      /* one or more stage keys, comma-separated */
+      const scopeKeys = String(scope).split(',').map((s) => s.trim()).filter(Boolean);
+      const validScopeKeys = scopeKeys.filter((k) => validKeys.includes(k));
+
+      if (validScopeKeys.length === 0) {
+        req.flash('error', 'Invalid scope.');
+        return res.redirect(`/jobs/${job.id}/applications`);
       }
+      where.status = { [Op.in]: validScopeKeys };
     }
+
+    /* ---- Exclude apps already in target stage ---- */
+    where.status = where.status
+      ? { [Op.and]: [where.status, { [Op.ne]: targetStage }] }
+      : { [Op.ne]: targetStage };
 
     const affected = await Application.findAll({ where });
 
     if (affected.length === 0) {
-      req.flash('error', 'No applications to reject in that group.');
+      req.flash('error', 'No applications to move.');
       return res.redirect(req.body.returnTo || `/jobs/${job.id}/applications`);
     }
 
     await sequelize.transaction(async (t) => {
       for (const app of affected) {
-        const fromStatus = app.status;
-
         await logStatusChange({
           applicationId: app.id,
-          fromStatus,
-          toStatus: 'rejected',
+          fromStatus: app.status,
+          toStatus: targetStage,
           changedByUserId: req.session.user.id,
           reason: reason || null,
-          source: `bulk-${label}`,
+          source: `bulk-${scope}`,
           transaction: t
         });
 
-        app.status = 'rejected';
+        app.status = targetStage;
         await app.save({ transaction: t });
       }
     });
 
     const back = req.body.returnTo || `/jobs/${job.id}/applications`;
-    req.flash('success', `Rejected ${affected.length} ${label} application${affected.length === 1 ? '' : 's'}.`);
+    req.flash(
+      'success',
+      `Moved ${affected.length} application${affected.length === 1 ? '' : 's'}.`
+    );
     res.redirect(back);
   } catch (err) {
-    console.error('[BULK REJECT]', err);
-    req.flash('error', 'Error during bulk reject.');
+    console.error('[BULK STATUS]', err);
+    req.flash('error', 'Error during bulk update.');
     res.redirect(`/jobs/${req.params.id}/applications`);
   }
 });

@@ -60,3 +60,37 @@
 .pill-info    { background: #dbeafe; color: var(--primary-dark); }
 .pill-primary { background: #ede9fe; color: #6d28d9; }
 .pill-muted   { background: var(--gray-200); color: var(--gray-700); }
+/* ==================================================================
+   SWEETALERT OVERRIDES
+   ================================================================== */
+.swal-error-message {
+  font-size: 14px;
+  color: var(--gray-700);
+  margin-bottom: 12px;
+  text-align: left;
+}
+.swal-error-list {
+  text-align: left;
+  margin: 0;
+  padding-left: 20px;
+  font-size: 13px;
+  color: var(--gray-600);
+  line-height: 1.7;
+}
+.swal-error-list li {
+  margin-bottom: 6px;
+}
+.swal-error-list strong {
+  color: var(--gray-900);
+  text-transform: capitalize;
+}
+
+.swal-mubs-popup {
+  border-radius: 12px !important;
+  font-family: 'Inter', sans-serif !important;
+}
+.swal-mubs-title {
+  font-size: 20px !important;
+  font-weight: 700 !important;
+  color: var(--gray-900) !important;
+}

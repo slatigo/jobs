@@ -4,14 +4,12 @@ const {
   Job,
   Application,
   ApplicationStatusHistory,
+  JobStage,
   User,
   Department
 } = require('../../models');
 const { isAuthenticated } = require('../../middleware/auth');
 
-/* ================================================================== */
-/* GET / — list applications for a job                                 */
-/* ================================================================== */
 router.get('/', isAuthenticated, async (req, res) => {
   try {
     const job = await Job.findByPk(req.params.id, {
@@ -24,20 +22,38 @@ router.get('/', isAuthenticated, async (req, res) => {
     }
 
     const isPoster = req.session.user.id === job.userId;
-    const isAdmin = req.session.user.role === 'admin';
+    const isAdmin  = req.session.user.role === 'admin';
 
     if (!isPoster && !isAdmin) {
       req.flash('error', 'You are not allowed to view applications for this job.');
       return res.redirect(`/jobs/${job.id}`);
     }
 
+    /* ---- Load the job's stages, fall back to defaults ---- */
+    const stageRows = await JobStage.findAll({
+      where: { jobId: job.id },
+      order: [['order', 'ASC']]
+    });
+
+    const stages = stageRows.length > 0
+      ? stageRows.map((s) => ({
+          key: s.key,
+          label: s.label,
+          color: s.color,
+          order: s.order,
+          isTerminal: s.isTerminal
+        }))
+      : Job.DEFAULT_STAGES;
+
+    /* ---- Filter ---- */
     const statusFilter = (req.query.status || 'all').toLowerCase();
-    const allowedFilters = ['all', 'pending', 'reviewed', 'shortlisted', 'rejected', 'accepted'];
-    const activeFilter = allowedFilters.includes(statusFilter) ? statusFilter : 'all';
+    const validKeys = ['all', ...stages.map((s) => s.key)];
+    const activeFilter = validKeys.includes(statusFilter) ? statusFilter : 'all';
 
     const where = { jobId: job.id };
     if (activeFilter !== 'all') where.status = activeFilter;
 
+    /* ---- Fetch apps + counts ---- */
     const [applications, allApplications] = await Promise.all([
       Application.findAll({
         where,
@@ -59,22 +75,20 @@ router.get('/', isAuthenticated, async (req, res) => {
       })
     ]);
 
-    const counts = {
-      all: allApplications.length,
-      pending: 0,
-      reviewed: 0,
-      shortlisted: 0,
-      rejected: 0,
-      accepted: 0
-    };
+    /* ---- Dynamic counts ---- */
+    const counts = { all: allApplications.length };
+    stages.forEach((s) => { counts[s.key] = 0; });
+
     allApplications.forEach((a) => {
       if (counts[a.status] !== undefined) counts[a.status]++;
+      else counts[a.status] = (counts[a.status] || 0) + 1;
     });
 
     res.render('jobs/applications', {
       title: `Applications — ${job.title}`,
       job,
       applications,
+      stages,
       counts,
       activeFilter,
       isAdmin

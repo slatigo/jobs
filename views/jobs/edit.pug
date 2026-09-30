@@ -21,72 +21,157 @@ block content
         form(action=`/jobs/${job.id}/edit` method="POST" id="jobForm")
           input(type="hidden" name="description" id="descriptionInput")
 
+          //- ============================================================
+          //- REFERENCE
+          //- ============================================================
           .form-row
             .form-group
               label Job Reference
-              input(type="text" name="jobRef" value=job.jobRef || '' placeholder="e.g. MUBS/HR/2025/001")
+              input(
+                type="text"
+                name="jobRef"
+                maxlength="60"
+                value=job.jobRef || ''
+                placeholder="Leave blank to keep as-is"
+              )
+              small.text-muted Auto-generated on creation. Edit only if needed.
+
+            .form-group
+              label Reference Category *
+              select(name="refCategory" required)
+                each cat in REF_CATEGORIES
+                  option(
+                    value=cat.code
+                    selected=(job.refCategory === cat.code)
+                  )= cat.code + ' — ' + cat.label
+
+          //- ============================================================
+          //- POSITION
+          //- ============================================================
+          .form-row
             .form-group
               label Position Title *
-              input(type="text" name="title" value=job.title required)
-
-          .form-row
+              input(
+                type="text"
+                name="title"
+                required
+                maxlength="180"
+                value=job.title
+              )
             .form-group
               label Department / Faculty *
               select(name="departmentId" required)
                 option(value="" disabled) Select department...
                 each d in departments
-                  option(value=d.id selected=job.departmentId === d.id)= d.name
-            .form-group
-              label Grade
-              input(type="text" name="grade" value=job.grade || '' placeholder="e.g. M3, M5, M7")
+                  option(
+                    value=d.id
+                    selected=(job.departmentId === d.id)
+                  )= d.name
 
           .form-row
+            .form-group
+              label Grade
+              input(
+                type="text"
+                name="grade"
+                maxlength="30"
+                value=job.grade || ''
+                placeholder="e.g. M3, M5, M7"
+              )
             .form-group
               label Job Type *
               select(name="type" required)
                 each t in JOB_TYPES
-                  option(value=t selected=job.type === t)= t
+                  option(value=t selected=(job.type === t))= t
+
+          .form-row
             .form-group
               label Contract Terms *
               select(name="contractTerms" required)
                 each c in CONTRACT_TERMS
-                  option(value=c selected=job.contractTerms === c)= c
+                  option(value=c selected=(job.contractTerms === c))= c
+            .form-group
+              label Number of Vacancies
+              input(
+                type="number"
+                name="vacancies"
+                min="1"
+                value=job.vacancies || 1
+              )
 
           .form-row
             .form-group
               label Duty Station
-              input(type="text" name="location" value=job.location || 'MUBS Main Campus, Nakawa')
+              input(
+                type="text"
+                name="location"
+                maxlength="150"
+                value=job.location || ''
+              )
             .form-group
-              label Number of Vacancies
-              input(type="number" name="vacancies" value=job.vacancies || 1 min="1")
+              label Visibility *
+              select(name="visibility" required)
+                option(value="public" selected=(job.visibility === 'public'))
+                  | Public — visible to everyone
+                option(value="internal" selected=(job.visibility === 'internal'))
+                  | Internal — MUBS staff only (@mubs.ac.ug)
+              small.text-muted Internal jobs won't appear in public search.
 
+          //- ============================================================
+          //- APPLICATION DETAILS
+          //- ============================================================
           .form-row
             .form-group
               label Application Deadline *
               - const deadlineVal = job.deadline ? new Date(job.deadline).toISOString().slice(0, 10) : ''
-              input(type="date" name="deadline" value=deadlineVal required)
+              input(
+                type="date"
+                name="deadline"
+                required
+                value=deadlineVal
+              )
             .form-group
               label Contact Email *
-              input(type="email" name="contactEmail" value=job.contactEmail || '' required)
+              input(
+                type="email"
+                name="contactEmail"
+                required
+                maxlength="160"
+                value=job.contactEmail || ''
+              )
 
           .form-group
             label Contact Phone
-            input(type="tel" name="contactPhone" value=job.contactPhone || '' placeholder="+256 414 505 200")
+            input(
+              type="tel"
+              name="contactPhone"
+              maxlength="30"
+              value=job.contactPhone || ''
+            )
 
+          //- ============================================================
+          //- DESCRIPTION
+          //- ============================================================
           .form-group
             label Job Description *
             small.text-muted Include duties, qualifications, experience, and terms of service
             #descriptionEditor.editor
 
+          //- ============================================================
+          //- ACTIONS
+          //- ============================================================
           .form-actions
             a.btn.btn-ghost(href=`/jobs/${job.id}`) Cancel
             button.btn.btn-primary(type="submit")
               i.fas.fa-check
-              | Save Changes
+              |  Save Changes
 
 block scripts
   script(src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js")
   script.
+    /* ============================================================ */
+    /* Quill editor                                                 */
+    /* ============================================================ */
     const toolbarOptions = [
       [{ header: [1, 2, 3, false] }],
       ['bold', 'italic', 'underline', 'strike'],
@@ -99,13 +184,16 @@ block scripts
 
     const quill = new Quill('#descriptionEditor', {
       theme: 'snow',
-      placeholder: 'Describe the position...',
+      placeholder: 'Describe the position — duties, required qualifications, experience, and terms of service...',
       modules: { toolbar: toolbarOptions }
     });
 
-    // Preload existing description (sanitized HTML from server)
+    /* Preload existing description */
     quill.clipboard.dangerouslyPasteHTML(!{JSON.stringify(job.description || '')});
 
+    /* ============================================================ */
+    /* Submit — copy Quill HTML into the hidden input               */
+    /* ============================================================ */
     document.getElementById('jobForm').addEventListener('submit', function (e) {
       const html = quill.root.innerHTML.trim();
       const isEmpty = !html || html === '<p><br></p>';

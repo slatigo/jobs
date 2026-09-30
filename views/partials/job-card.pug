@@ -1,6 +1,6 @@
 article.job-card
   .job-card-header
-    .company-logo= job.department ? job.department.name.charAt(0).toUpperCase() : 'J'
+    
     - const expired = new Date(job.deadline).getTime() < Date.now()
     - const daysLeft = Math.ceil((new Date(job.deadline) - Date.now()) / 86400000)
     if expired || job.status === 'closed'

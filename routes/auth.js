@@ -19,7 +19,8 @@ function safeUser(user) {
     id: user.id,
     name: user.name,
     email: user.email,
-    role: user.role
+    role: user.role,
+    phone: user.phone || null
   };
 }
 
@@ -104,21 +105,15 @@ router.post('/register', redirectIfAuthed, async (req, res) => {
     email,
     password,
     passwordConfirm,
-    role,
     phone,
-    course,
-    company,
     returnTo = '/'
   } = req.body;
 
   /* ---- Stash form values to repopulate on error ---- */
   const stashForm = () => {
-    req.flash('formName', (name || '').trim());
+    req.flash('formName',  (name  || '').trim());
     req.flash('formEmail', (email || '').trim());
-    req.flash('formRole', role || 'applicant');
     req.flash('formPhone', (phone || '').trim());
-    req.flash('formCourse', (course || '').trim());
-    req.flash('formCompany', (company || '').trim());
   };
 
   const fail = (msg) => {
@@ -142,21 +137,17 @@ router.post('/register', redirectIfAuthed, async (req, res) => {
       return fail('Passwords do not match.');
     }
 
-    const safeRole = 'applicant';
-
     /* ---- Uniqueness check ---- */
     const existing = await User.findOne({ where: { email: normalized } });
     if (existing) return fail('An account with that email already exists.');
 
-    /* ---- Create ---- */
+    /* ---- Create (public registration is always 'applicant') ---- */
     const user = await User.create({
       name: name.trim(),
       email: normalized,
-      password,                                 // model hook hashes it
-      role: safeRole,
-      phone: phone ? phone.trim() : null,
-      course: safeRole === 'applicant' && course ? course.trim() : null,
-      company: safeRole === 'employer' && company ? company.trim() : null
+      password,                       // model hook hashes it
+      role: 'applicant',
+      phone: phone ? phone.trim() : null
     });
 
     /* ---- Send welcome email (fire-and-forget) ---- */
@@ -166,7 +157,6 @@ router.post('/register', redirectIfAuthed, async (req, res) => {
       role: user.role
     }).catch((err) => {
       console.error('[WELCOME EMAIL]', err.message);
-      // Registration succeeds even if email fails
     });
 
     /* ---- Auto-login with session regen ---- */
@@ -183,14 +173,11 @@ router.post('/register', redirectIfAuthed, async (req, res) => {
     });
   } catch (err) {
     console.error('[AUTH REGISTER]', err);
-
-    /* ---- Sanitized error messages (never leak Sequelize internals) ---- */
     const msg = err.name === 'SequelizeUniqueConstraintError'
       ? 'That email is already registered.'
       : err.name === 'SequelizeValidationError'
         ? 'Please check the information you entered.'
         : 'Registration failed. Please try again.';
-
     stashForm();
     req.flash('error', msg);
     res.redirect('/auth/register');

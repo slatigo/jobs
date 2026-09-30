@@ -15,7 +15,7 @@ block content
             i.fas.fa-search
             input(type="text" name="search" placeholder="Search by job title...")
           .search-group
-            i.fas.fa-map-marker-alt
+            i.fas.fa-map-location-dot
             input(type="text" name="location" placeholder="Location")
           button.btn.btn-primary(type="submit")
             i.fas.fa-search
@@ -30,23 +30,6 @@ block content
           .stat
             strong= stats.closingSoon || 0
             span Closing Soon
-
-      .hero-visual
-        .floating-card.card-1
-          i.fas.fa-briefcase
-          div
-            strong Open Positions
-            span Updated daily
-        .floating-card.card-2
-          i.fas.fa-users
-          div
-            strong MUBS Community
-            span Students & Alumni
-        .floating-card.card-3
-          i.fas.fa-building
-          div
-            strong All Faculties
-            span Across MUBS
 
   if featured && featured.length
     section.featured-jobs

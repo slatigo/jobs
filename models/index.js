@@ -2,6 +2,7 @@ const sequelize = require('../config/database');
 const User = require('./User');
 const Department = require('./Department');
 const Job = require('./Job');
+const JobStage = require('./JobStage');
 const Application = require('./Application');
 const ApplicationStatusHistory = require('./ApplicationStatusHistory');
 
@@ -16,6 +17,19 @@ Job.belongsTo(Department, { foreignKey: 'departmentId', as: 'department' });
 /* ------------------------------------------------------------------ */
 User.hasMany(Job, { foreignKey: 'userId', as: 'postedJobs', onDelete: 'SET NULL' });
 Job.belongsTo(User, { foreignKey: 'userId', as: 'postedBy' });
+
+/* ------------------------------------------------------------------ */
+/* Job ↔ JobStage                                                      */
+/* ------------------------------------------------------------------ */
+Job.hasMany(JobStage, {
+  foreignKey: 'jobId',
+  as: 'stageRows',              // ← avoids clashing with Job.prototype.getStages
+  onDelete: 'CASCADE'
+});
+JobStage.belongsTo(Job, {
+  foreignKey: 'jobId',
+  as: 'job'
+});
 
 /* ------------------------------------------------------------------ */
 /* User ↔ Jobs via Applications                                        */
@@ -70,6 +84,7 @@ module.exports = {
   User,
   Department,
   Job,
+  JobStage,                    // ← export it
   Application,
   ApplicationStatusHistory
 };

@@ -46,5 +46,40 @@ const Department = sequelize.define('Department', {
 });
 
 Department.TYPES = DEPARTMENT_TYPES;
+/**
+ * Return a short code for the department, suitable for job references.
+ * Priority:
+ *   1. shortName if set
+ *   2. First letters of significant words (e.g. "Faculty of Commerce" → "FOC")
+ *   3. First 3 letters of the name as last resort
+ */
+Department.prototype.getRefCode = function () {
+  if (this.shortName && this.shortName.trim()) {
+    return this.shortName.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  }
 
+  const name = (this.name || '').toUpperCase();
+
+  /* Skip common stop words */
+  const skip = new Set(['OF', 'AND', 'THE', 'FOR', '&', ',', '-']);
+  const words = name
+    .replace(/[^A-Z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter((w) => w && !skip.has(w));
+
+  if (words.length === 0) return 'GEN';
+
+  /* If the name already starts with an acronym in parens, use it */
+  const parenMatch = this.name.match(/\(([A-Z]{2,6})\)/);
+  if (parenMatch) return parenMatch[1];
+
+  /* 2-4 letter acronym from initial letters */
+  if (words.length >= 2) {
+    const acronym = words.slice(0, 4).map((w) => w[0]).join('');
+    return acronym.slice(0, 4);
+  }
+
+  /* Single word — first 3 letters */
+  return words[0].slice(0, 3);
+};
 module.exports = Department;

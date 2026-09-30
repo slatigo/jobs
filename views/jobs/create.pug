@@ -13,73 +13,183 @@ block content
     .container
       .form-card
         form(action="/jobs" method="POST" id="jobForm")
-          input(type="hidden" name="description" id="descriptionInput")
+          input(type="hidden" name="description" id="descriptionInput" value=form.description || '')
 
+          //- ============================================================
+          //- REFERENCE
+          //- ============================================================
           .form-row
             .form-group
               label Job Reference
-              input(type="text" name="jobRef" placeholder="e.g. MUBS/HR/2025/001")
+              input(
+                type="text"
+                name="jobRef"
+                maxlength="60"
+                placeholder="Leave blank to auto-generate"
+                value=form.jobRef
+              )
+              small.text-muted Auto-generated (e.g. MUBS/ADM/2026/001) if left empty.
+
+            .form-group
+              label Reference Category *
+              select(name="refCategory" required)
+                each cat in REF_CATEGORIES
+                  option(
+                    value=cat.code
+                    selected=(form.refCategory === cat.code)
+                  )= cat.code + ' — ' + cat.label
+
+          //- ============================================================
+          //- POSITION
+          //- ============================================================
+          .form-row
             .form-group
               label Position Title *
-              input(type="text" name="title" required placeholder="e.g. School Bursar")
-
-          .form-row
+              input(
+                type="text"
+                name="title"
+                required
+                maxlength="180"
+                placeholder="e.g. School Bursar"
+                value=form.title
+              )
             .form-group
               label Department / Faculty *
               select(name="departmentId" required)
-                option(value="" disabled selected) Select department...
+                option(value="" disabled selected=(!form.departmentId)) Select department...
                 each d in departments
-                  option(value=d.id)= d.name
-            .form-group
-              label Grade
-              input(type="text" name="grade" placeholder="e.g. M3, M5, M7")
+                  option(
+                    value=d.id
+                    selected=(String(form.departmentId) === String(d.id))
+                  )= d.name
 
           .form-row
+            .form-group
+              label Grade
+              input(
+                type="text"
+                name="grade"
+                maxlength="30"
+                placeholder="e.g. M3, M5, M7"
+                value=form.grade
+              )
             .form-group
               label Job Type *
               select(name="type" required)
                 each t in JOB_TYPES
-                  option(value=t)= t
+                  option(value=t selected=(form.type === t))= t
+
+          .form-row
             .form-group
               label Contract Terms *
               select(name="contractTerms" required)
                 each c in CONTRACT_TERMS
-                  option(value=c)= c
+                  option(value=c selected=(form.contractTerms === c))= c
+            .form-group
+              label Number of Vacancies
+              input(
+                type="number"
+                name="vacancies"
+                min="1"
+                value=form.vacancies
+              )
 
           .form-row
             .form-group
               label Duty Station
-              input(type="text" name="location" value="MUBS Main Campus, Nakawa")
+              input(
+                type="text"
+                name="location"
+                maxlength="150"
+                value=form.location
+              )
             .form-group
-              label Number of Vacancies
-              input(type="number" name="vacancies" value="1" min="1")
+              label Visibility *
+              select(name="visibility" required)
+                option(value="public" selected=(form.visibility === 'public'))
+                  | Public — visible to everyone
+                option(value="internal" selected=(form.visibility === 'internal'))
+                  | Internal — MUBS staff only (@mubs.ac.ug)
+              small.text-muted Internal jobs won't appear in public search.
 
+          //- ============================================================
+          //- APPLICATION DETAILS
+          //- ============================================================
           .form-row
             .form-group
               label Application Deadline *
-              input(type="date" name="deadline" required)
+              input(
+                type="date"
+                name="deadline"
+                required
+                value=form.deadline
+              )
             .form-group
               label Contact Email *
-              input(type="email" name="contactEmail" required placeholder="hr@mubs.ac.ug")
+              input(
+                type="email"
+                name="contactEmail"
+                required
+                maxlength="160"
+                placeholder="hr@mubs.ac.ug"
+                value=form.contactEmail
+              )
 
           .form-group
             label Contact Phone
-            input(type="tel" name="contactPhone" placeholder="+256 414 505 200")
+            input(
+              type="tel"
+              name="contactPhone"
+              maxlength="30"
+              placeholder="+256 414 338 131"
+              value=form.contactPhone
+            )
 
+          //- ============================================================
+          //- DESCRIPTION
+          //- ============================================================
           .form-group
             label Job Description *
             small.text-muted Include duties, qualifications, experience, and terms of service
             #descriptionEditor.editor
 
+          //- ============================================================
+          //- STAGES
+          //- ============================================================
+          .stages-editor
+            .stages-header
+              h3 Application Stages
+              p.stages-hint
+                | Define the workflow this job goes through. Applicants move through
+                | these stages in order. You can edit them later from the job's page.
+
+            .stages-actions-top
+              button.btn.btn-sm.btn-outline(type="button" id="addStageBtn")
+                i.fas.fa-plus
+                |  Add Stage
+              button.btn.btn-sm.btn-ghost(type="button" id="resetStagesBtn")
+                i.fas.fa-undo
+                |  Reset to Default
+
+            #stagesList.stages-list(
+              data-initial=form.stages
+            )
+
+          //- ============================================================
+          //- ACTIONS
+          //- ============================================================
           .form-actions
             a.btn.btn-ghost(href="/jobs") Cancel
             button.btn.btn-primary(type="submit")
               i.fas.fa-check
-              | Publish Position
+              |  Publish Position
 
 block scripts
   script(src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js")
   script.
+    /* ============================================================ */
+    /* Quill — initialise with existing content (repopulation)     */
+    /* ============================================================ */
     const toolbarOptions = [
       [{ header: [1, 2, 3, false] }],
       ['bold', 'italic', 'underline', 'strike'],
@@ -92,10 +202,147 @@ block scripts
 
     const quill = new Quill('#descriptionEditor', {
       theme: 'snow',
-      placeholder: 'Describe the position — duties, required qualifications, experience, and terms of service...',
+      placeholder: 'Describe the position...',
       modules: { toolbar: toolbarOptions }
     });
 
+    /* Preload the description — hidden input holds the previous value */
+    const existingDescription = document.getElementById('descriptionInput').value;
+    if (existingDescription) {
+      quill.clipboard.dangerouslyPasteHTML(existingDescription);
+    }
+
+    /* ============================================================ */
+    /* Stages editor                                                */
+    /* ============================================================ */
+    (function () {
+      const DEFAULT_STAGES = [
+        { key: 'pending',     label: 'Pending',     color: 'warning' },
+        { key: 'reviewed',    label: 'Reviewed',    color: 'primary' },
+        { key: 'shortlisted', label: 'Shortlisted', color: 'info'    },
+        { key: 'interviewed', label: 'Interviewed', color: 'info'    },
+        { key: 'accepted',    label: 'Accepted',    color: 'success' },
+        { key: 'rejected',    label: 'Rejected',    color: 'danger'  }
+      ];
+
+      const listEl   = document.getElementById('stagesList');
+      const addBtn   = document.getElementById('addStageBtn');
+      const resetBtn = document.getElementById('resetStagesBtn');
+
+      /* Load initial stages from the data attribute (empty on first render) */
+      let stages;
+      try {
+        const parsed = JSON.parse(listEl.dataset.initial || '[]');
+        stages = Array.isArray(parsed) && parsed.length > 0
+          ? parsed
+          : DEFAULT_STAGES.slice();
+      } catch {
+        stages = DEFAULT_STAGES.slice();
+      }
+
+      function slugKey(label) {
+        return String(label || '')
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '_')
+          .replace(/^_+|_+$/g, '') || 'stage';
+      }
+
+      function render() {
+        listEl.innerHTML = '';
+        stages.forEach((s, i) => {
+          const row = document.createElement('div');
+          row.className = 'stage-row';
+          row.innerHTML = `
+            <span class="drag-handle" title="Reorder (coming soon)">⋮⋮</span>
+            <input type="text"
+                   value="${(s.label || '').replace(/"/g, '&quot;')}"
+                   data-idx="${i}" data-field="label"
+                   placeholder="Stage name">
+            <select class="stage-color-select stage-color-${s.color || 'primary'}"
+                    data-idx="${i}" data-field="color">
+              <option value="warning"  ${s.color === 'warning'  ? 'selected' : ''}>Warning</option>
+              <option value="primary"  ${s.color === 'primary'  ? 'selected' : ''}>Primary</option>
+              <option value="info"     ${s.color === 'info'     ? 'selected' : ''}>Info</option>
+              <option value="success"  ${s.color === 'success'  ? 'selected' : ''}>Success</option>
+              <option value="danger"   ${s.color === 'danger'   ? 'selected' : ''}>Danger</option>
+            </select>
+            <button type="button" class="remove-btn" data-idx="${i}" title="Remove">×</button>
+          `;
+          listEl.appendChild(row);
+        });
+      }
+
+      function serialize() {
+        const out = stages
+          .map((s) => ({
+            key:   slugKey(s.label),
+            label: (s.label || '').trim() || 'Stage',
+            color: s.color || 'primary'
+          }))
+          .filter((s) => s.label);
+
+        /* Ensure keys are unique */
+        const seen = new Set();
+        out.forEach((s) => {
+          let k = s.key, n = 2;
+          while (seen.has(k)) k = `${s.key}_${n++}`;
+          s.key = k;
+          seen.add(k);
+        });
+
+        document.getElementById('stagesInput').value = JSON.stringify(out);
+      }
+
+      listEl.addEventListener('input', (e) => {
+        const idx = parseInt(e.target.dataset.idx, 10);
+        const field = e.target.dataset.field;
+        if (isNaN(idx) || !field) return;
+        stages[idx][field] = e.target.value;
+        serialize();
+      });
+
+      listEl.addEventListener('change', (e) => {
+        const idx = parseInt(e.target.dataset.idx, 10);
+        const field = e.target.dataset.field;
+        if (isNaN(idx) || !field) return;
+        stages[idx][field] = e.target.value;
+        if (field === 'color') {
+          e.target.className = 'stage-color-select stage-color-' + e.target.value;
+        }
+        serialize();
+      });
+
+      listEl.addEventListener('click', (e) => {
+        const rm = e.target.closest('.remove-btn');
+        if (!rm) return;
+        const idx = parseInt(rm.dataset.idx, 10);
+        if (isNaN(idx)) return;
+        stages.splice(idx, 1);
+        if (stages.length === 0) stages = DEFAULT_STAGES.slice();
+        render();
+        serialize();
+      });
+
+      addBtn.addEventListener('click', () => {
+        stages.push({ label: 'New Stage', color: 'primary' });
+        render();
+        serialize();
+      });
+
+      resetBtn.addEventListener('click', () => {
+        if (!confirm('Reset to the default stages? Your custom stages will be lost.')) return;
+        stages = DEFAULT_STAGES.slice();
+        render();
+        serialize();
+      });
+
+      render();
+      serialize();
+    })();
+
+    /* ============================================================ */
+    /* Form submit                                                  */
+    /* ============================================================ */
     document.getElementById('jobForm').addEventListener('submit', function (e) {
       const html = quill.root.innerHTML.trim();
       const isEmpty = !html || html === '<p><br></p>';
@@ -107,4 +354,17 @@ block scripts
       }
       quill.root.parentElement.classList.remove('editor-error');
       document.getElementById('descriptionInput').value = html;
+
+      /* Stages must be present */
+      try {
+        const stages = JSON.parse(document.getElementById('stagesInput').value || '[]');
+        if (!Array.isArray(stages) || stages.length === 0) {
+          e.preventDefault();
+          alert('Please define at least one application stage.');
+          return;
+        }
+      } catch {
+        e.preventDefault();
+        alert('Stages data is invalid. Please try again.');
+      }
     });

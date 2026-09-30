@@ -77,6 +77,9 @@ block content
                 a.btn.btn-outline.btn-block(href=`/jobs/${job.id}/edit`)
                   i.fas.fa-edit
                   |  Edit Job
+                a.btn.btn-outline.btn-block(href=`/jobs/${job.id}/stages`)
+                       i.fas.fa-layer-group
+                       |  Manage Stages
 
                 if job.status === 'active'
                   form(action=`/jobs/${job.id}/close` method="POST" data-confirm="Close this job? Applicants will no longer be able to apply." data-confirm-title="Close Job" data-confirm-label="Close Job" data-confirm-tone="warning")
@@ -84,9 +87,10 @@ block content
                       i.fas.fa-lock
                       |  Close Job
                 else
-                  .closed-notice
-                    i.fas.fa-info-circle
-                    span This job is closed.
+                  form(action=`/jobs/${job.id}/reopen` method="POST" data-confirm="Reopen this job? Applicants will be able to apply again." data-confirm-title="Reopen Job" data-confirm-label="Reopen Job" data-confirm-tone="success")
+                    button.btn.btn-success.btn-block(type="submit")
+                      i.fas.fa-unlock
+                      |  Reopen Job
 
                 form(action=`/jobs/${job.id}/delete` method="POST" data-confirm="Permanently delete this job and all its applications? This cannot be undone." data-confirm-title="Delete Job" data-confirm-label="Delete Permanently" data-confirm-tone="danger")
                   button.btn.btn-danger.btn-block(type="submit")
@@ -117,7 +121,13 @@ block content
 
                   .form-group
                     label Phone
-                    input(type="tel" name="phone" required)
+                    input(
+                      type="tel"
+                      name="phone"
+                      required
+                      value=user.phone || ''
+                      autocomplete="tel"
+                    )
 
                   .form-group
                     label Attachment *
@@ -159,14 +169,42 @@ block content
           //- ============================================================
           //- SHARE
           //- ============================================================
-          .sidebar-card
-            h3 Share this Vacancy
-            .share-buttons
-              a.share-btn.share-fb(href="#" aria-label="Share on Facebook")
-                i.fab.fa-facebook-f
-              a.share-btn.share-tw(href="#" aria-label="Share on Twitter")
-                i.fab.fa-twitter
-              a.share-btn.share-li(href="#" aria-label="Share on LinkedIn")
-                i.fab.fa-linkedin-in
-              a.share-btn.share-wa(href="#" aria-label="Share on WhatsApp")
-                i.fab.fa-whatsapp
+          .sidebar-card.share-card
+            h3
+              i.fas.fa-share-alt
+              |  Share this Vacancy
+
+            if job.shortCode
+             
+              .share-link
+                input.share-link-input(
+                  type="text"
+                  readonly
+                  value=job.getShareUrl()
+                  onclick="this.select()"
+                  aria-label="Share link"
+                )
+                button.btn.btn-sm.btn-primary.share-copy-btn(
+                  type="button"
+                  onclick="copyShareLink(this)"
+                  title="Copy link"
+                )
+                  i.fas.fa-copy
+                  span Copy
+            else
+
+              .share-link
+                input.share-link-input(
+                  type="text"
+                  readonly
+                  value=(APP_URL || '') + '/jobs/' + job.id
+                  onclick="this.select()"
+                  aria-label="Job link"
+                )
+                button.btn.btn-sm.btn-primary.share-copy-btn(
+                  type="button"
+                  onclick="copyShareLink(this)"
+                  title="Copy link"
+                )
+                  i.fas.fa-copy
+                  span Copy

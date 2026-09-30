@@ -1,52 +1,125 @@
+/**
+ * Seeds the departments table with the full MUBS organisational structure.
+ *
+ * Usage:
+ *   node scripts/seed-departments.js
+ *
+ * Idempotent: wipes existing departments (if no jobs reference them)
+ * and inserts the list below. Safe to re-run.
+ */
+
 require('dotenv').config();
 const { sequelize, Department, Job } = require('../models');
 
 /* ------------------------------------------------------------------ */
-/* Curated list of MUBS departments for the job board                  */
+/* Department list — full MUBS structure                              */
 /* ------------------------------------------------------------------ */
 const departments = [
-  // Faculties
-  { mubsId: 18, name: 'Faculty of Commerce',                                      type: 'Faculty',     shortName: 'FOC',   displayOrder: 10 },
-  { mubsId: 24, name: 'Faculty of Business Administration',                       type: 'Faculty',     shortName: 'FBA',   displayOrder: 20 },
-  { mubsId: 23, name: 'Faculty of Entrepreneurship & Small Business Management',  type: 'Faculty',     shortName: 'FESBM', displayOrder: 30 },
-  { mubsId: 16, name: 'Faculty of Computing & Informatics',                       type: 'Faculty',     shortName: 'FCI',   displayOrder: 40 },
-  { mubsId: 31, name: 'Faculty of Management',                                    type: 'Faculty',     shortName: 'FOM',   displayOrder: 50 },
-  { mubsId: 34, name: 'Faculty of Marketing & International Business',            type: 'Faculty',     shortName: 'FMIB',  displayOrder: 60 },
-  { mubsId: 33, name: 'Faculty of Economics, Energy and Management Science',      type: 'Faculty',     shortName: 'FEEMS', displayOrder: 70 },
-  { mubsId: 104, name: 'Faculty of Tourism, Hospitality & Languages',             type: 'Faculty',     shortName: 'FTHL',  displayOrder: 80 },
-  { mubsId: 113, name: 'Faculty of Procurement & Logistics Management',           type: 'Faculty',     shortName: 'FPLM',  displayOrder: 90 },
-  { mubsId: 30, name: 'Faculty of Vocational and Distance Education',             type: 'Faculty',     shortName: 'FVDE',  displayOrder: 100 },
-  { mubsId: 32, name: 'Faculty of Graduate Studies and Research',                 type: 'Faculty',     shortName: 'FGSR',  displayOrder: 110 },
-  { mubsId: 179, name: 'Faculty of Science Education',                            type: 'Faculty',     shortName: 'FSE',   displayOrder: 120 },
-
-  // Directorates
-  { mubsId: 6,   name: 'Human Resource Directorate',                              type: 'Directorate', shortName: 'HRD',   displayOrder: 200 },
-  { mubsId: 69,  name: 'Directorate of Quality Assurance',                        type: 'Directorate', shortName: 'DQA',   displayOrder: 210 },
-  { mubsId: 124, name: 'Internal Audit Directorate',                              type: 'Directorate', shortName: 'IAD',   displayOrder: 220 },
-  { mubsId: 190, name: 'Directorate of Legal Affairs',                            type: 'Directorate', shortName: 'DLA',   displayOrder: 230 },
-
-  // Departments & Units
-  { mubsId: 74,  name: 'ICT Centre',                                              type: 'Department',  shortName: 'ICT',   displayOrder: 300 },
-  { mubsId: 132, name: "School Bursar's Office",                                  type: 'Department',  shortName: 'Bursar',displayOrder: 310 },
-  { mubsId: 66,  name: "School Registrar's Office",                               type: 'Office',      shortName: 'Registrar', displayOrder: 320 },
-  { mubsId: 75,  name: "School Librarian's Office",                               type: 'Office',      shortName: 'Library', displayOrder: 330 },
-  { mubsId: 106, name: 'Procurement and Disposal Unit',                           type: 'Unit',        shortName: 'PDU',   displayOrder: 340 },
-  { mubsId: 57,  name: 'Estates and Works',                                       type: 'Department',  shortName: 'Estates', displayOrder: 350 },
-  { mubsId: 83,  name: 'Public Relations & Promotions Office',                    type: 'Office',      shortName: 'PR',    displayOrder: 360 },
-  { mubsId: 80,  name: "Dean of Students' Office",                                type: 'Office',      shortName: 'DOS',   displayOrder: 370 },
-
-  // Regional Campuses
-  { mubsId: 87,  name: 'MUBS Regional Campus - Mbale',                            type: 'Faculty',     shortName: 'Mbale', displayOrder: 400 },
-  { mubsId: 101, name: 'MUBS Regional Campus - Jinja',                            type: 'Faculty',     shortName: 'Jinja', displayOrder: 410 },
-  { mubsId: 102, name: 'MUBS Regional Campus - Mbarara',                          type: 'Faculty',     shortName: 'Mbarara', displayOrder: 420 },
-  { mubsId: 103, name: 'MUBS Regional Campus - Arua',                             type: 'Faculty',     shortName: 'Arua',  displayOrder: 430 },
-
-  // Fallback
-  { mubsId: 999, name: 'Other',                                                   type: 'Unit',        shortName: 'Other', displayOrder: 999 }
+  { name: 'AFRICAN CENTRE FOR LIGHTENING & ELECTROMAGNETICS', shortName: null, type: 'Unit',        displayOrder: 1 },
+  { name: 'ALUMNI, SCHOOL REGISTRAR\'S OFFICE',               shortName: null, type: 'Office',      displayOrder: 2 },
+  { name: 'BOARD - RBS',                                      shortName: null, type: 'Unit',        displayOrder: 3 },
+  { name: 'CAREER AND SKILLS DEVELOPMENT CENTRE, SCHOOL REGISTRAR\'S OFFICE', shortName: null, type: 'Office', displayOrder: 4 },
+  { name: 'CHAPLAINCIES',                                     shortName: null, type: 'Unit',        displayOrder: 5 },
+  { name: 'CLEANING & TEACHING EQUIPMENT, SCHOOL SECRETARY\'S OFFICE', shortName: null, type: 'Office', displayOrder: 6 },
+  { name: 'CONTRACTS MANAGEMENT, PRINCIPAL\'S OFFICE',         shortName: null, type: 'Office',      displayOrder: 7 },
+  { name: 'CREATIVE LEARNING',                                shortName: null, type: 'Unit',        displayOrder: 8 },
+  { name: 'DEAN OF STUDENTS\' OFFICE',                        shortName: null, type: 'Office',      displayOrder: 9 },
+  { name: 'DEPARTMENT OF ACCOUNTING, FACULTY OF COMMERCE',    shortName: null, type: 'Department',  displayOrder: 10 },
+  { name: 'DEPARTMENT OF ACCOUNTING AND FINANCE, MUBS REGIONAL CAMPUS-ARUA', shortName: null, type: 'Department', displayOrder: 11 },
+  { name: 'DEPARTMENT OF ACCOUNTING AND FINANCE, MUBS REGIONAL CAMPUS MBARARA', shortName: null, type: 'Department', displayOrder: 12 },
+  { name: 'DEPARTMENT OF ACCOUNTING AND FINANCE, MUBS REGIONAL CAMPUS-JINJA', shortName: null, type: 'Department', displayOrder: 13 },
+  { name: 'DEPARTMENT OF ACCOUNTING AND FINANCE, MUBS REGIONAL CAMPUS-MBALE', shortName: null, type: 'Department', displayOrder: 14 },
+  { name: 'DEPARTMENT OF APPLIED COMPUTING & INFORMATION TECHNOLOGY, FACULTY OF COMPUTING & INFORMATICS', shortName: null, type: 'Department', displayOrder: 15 },
+  { name: 'DEPARTMENT OF AUDITING & TAXATION, FACULTY OF COMMERCE', shortName: null, type: 'Department', displayOrder: 16 },
+  { name: 'DEPARTMENT OF BUSINESS ADMINISTRATION, FACULTY OF BUSINESS ADMINISTRATION', shortName: null, type: 'Department', displayOrder: 17 },
+  { name: 'DEPARTMENT OF BUSINESS LANGUAGES, FACULTY OF TOURISM, HOSPITALITY & LANGUAGES', shortName: null, type: 'Department', displayOrder: 18 },
+  { name: 'DEPARTMENT OF BUSINESS LAW, FACULTY OF COMMERCE', shortName: null, type: 'Department', displayOrder: 19 },
+  { name: 'DEPARTMENT OF COMMUNICATION, FACULTY OF BUSINESS ADMINISTRATION', shortName: null, type: 'Department', displayOrder: 20 },
+  { name: 'DEPARTMENT OF COMPUTER SCIENCE AND ENGINEERING, FACULTY OF COMPUTING & INFORMATICS', shortName: null, type: 'Department', displayOrder: 21 },
+  { name: 'DEPARTMENT OF ECONOMICS, FACULTY OF ECONOMICS, ENERGY AND MANAGEMENT SCIENCE', shortName: null, type: 'Department', displayOrder: 22 },
+  { name: 'DEPARTMENT OF EDUCATION, FACULTY OF VOCATIONAL AND DISTANCE EDUCATION', shortName: null, type: 'Department', displayOrder: 23 },
+  { name: 'DEPARTMENT OF ENERGY SCIENCE AND TECHNOLOGY, FACULTY OF ECONOMICS, ENERGY AND MANAGEMENT SCIENCE', shortName: null, type: 'Department', displayOrder: 24 },
+  { name: 'DEPARTMENT OF ENTREPRENEURSHIP & INNOVATION, FACULTY OF ENTREPRENEURSHIP & SMALL BUSINESS MANAGEMENT', shortName: null, type: 'Department', displayOrder: 25 },
+  { name: 'DEPARTMENT OF FINANCE, FACULTY OF COMMERCE', shortName: null, type: 'Department', displayOrder: 26 },
+  { name: 'DEPARTMENT OF HUMAN RESOURCE MANAGEMENT, FACULTY OF MANAGEMENT', shortName: null, type: 'Department', displayOrder: 27 },
+  { name: 'DEPARTMENT OF INFORMATION SYSTEMS, FACULTY OF COMPUTING & INFORMATICS', shortName: null, type: 'Department', displayOrder: 28 },
+  { name: 'DEPARTMENT OF LEADERSHIP & GOVERNANCE, FACULTY OF MANAGEMENT', shortName: null, type: 'Department', displayOrder: 29 },
+  { name: 'DEPARTMENT OF LEISURE, EVENTS & HOSPITALITY MANAGEMENT, FACULTY OF TOURISM, HOSPITALITY & LANGUAGES', shortName: null, type: 'Department', displayOrder: 30 },
+  { name: 'DEPARTMENT OF MANAGEMENT, FACULTY OF MANAGEMENT', shortName: null, type: 'Department', displayOrder: 31 },
+  { name: 'DEPARTMENT OF MANAGEMENT SCIENCE, FACULTY OF ECONOMICS, ENERGY AND MANAGEMENT SCIENCE', shortName: null, type: 'Department', displayOrder: 32 },
+  { name: 'DEPARTMENT OF MARKETING AND MANAGEMENT, MUBS REGIONAL CAMPUS-ARUA', shortName: null, type: 'Department', displayOrder: 33 },
+  { name: 'DEPARTMENT OF MARKETING AND MANAGEMENT, MUBS REGIONAL CAMPUS MBARARA', shortName: null, type: 'Department', displayOrder: 34 },
+  { name: 'DEPARTMENT OF MARKETING AND MANAGEMENT, MUBS REGIONAL CAMPUS-JINJA', shortName: null, type: 'Department', displayOrder: 35 },
+  { name: 'DEPARTMENT OF MARKETING AND MANAGEMENT, MUBS REGIONAL CAMPUS-MBALE', shortName: null, type: 'Department', displayOrder: 36 },
+  { name: 'DEPARTMENT OF MARKETING AND MEDIA STUDIES, FACULTY OF MARKETING & INTERNATIONAL BUSINESS', shortName: null, type: 'Department', displayOrder: 37 },
+  { name: 'DEPARTMENT OF PROCUREMENT & SUPPLY CHAIN MANAGEMENT, FACULTY OF PROCUREMENT & LOGISTICS MANAGEMENT', shortName: null, type: 'Department', displayOrder: 38 },
+  { name: 'DEPARTMENT OF SMALL BUSINESS MGT, FACULTY OF ENTREPRENEURSHIP & SMALL BUSINESS MANAGEMENT', shortName: null, type: 'Department', displayOrder: 39 },
+  { name: 'DEPARTMENT OF TOURISM MANAGEMENT, FACULTY OF TOURISM, HOSPITALITY & LANGUAGES', shortName: null, type: 'Department', displayOrder: 40 },
+  { name: 'DEPARTMENT OF TRANSPORT AND LOGISTICS MANAGEMENT, FACULTY OF PROCUREMENT & LOGISTICS MANAGEMENT', shortName: null, type: 'Department', displayOrder: 41 },
+  { name: 'DEPUTY PRINCIPAL\'S OFFICE',                       shortName: null, type: 'Office',      displayOrder: 42 },
+  { name: 'DIRECTORATE OF LEGAL AFFAIRS',                     shortName: null, type: 'Directorate', displayOrder: 43 },
+  { name: 'DIRECTORATE OF QUALITY ASSURANCE',                 shortName: null, type: 'Directorate', displayOrder: 44 },
+  { name: 'DISABILITY AND RESOURCE LEARNING CENTRE',          shortName: null, type: 'Unit',        displayOrder: 45 },
+  { name: 'E-LEARNING',                                       shortName: null, type: 'Unit',        displayOrder: 46 },
+  { name: 'ECONOMIC FORUM, FACULTY OF ECONOMICS, ENERGY AND MANAGEMENT SCIENCE', shortName: null, type: 'Unit', displayOrder: 47 },
+  { name: 'ENTREPRENEURSHIP, INNOVATION AND INCUBATION CENTRE', shortName: null, type: 'Unit',      displayOrder: 48 },
+  { name: 'ENVIRONMENTAL MANAGEMENT UNIT, PRINCIPAL\'S OFFICE', shortName: null, type: 'Unit',      displayOrder: 49 },
+  { name: 'ESTATES AND WORKS',                                shortName: null, type: 'Unit',        displayOrder: 50 },
+  { name: 'EXAMINATIONS UNIT, DIRECTORATE OF QUALITY ASSURANCE', shortName: null, type: 'Unit',     displayOrder: 51 },
+  { name: 'FACULTY OF BUSINESS ADMINISTRATION',               shortName: null, type: 'Faculty',     displayOrder: 52 },
+  { name: 'FACULTY OF COMMERCE',                              shortName: null, type: 'Faculty',     displayOrder: 53 },
+  { name: 'FACULTY OF COMPUTING & INFORMATICS',               shortName: null, type: 'Faculty',     displayOrder: 54 },
+  { name: 'FACULTY OF ECONOMICS, ENERGY AND MANAGEMENT SCIENCE', shortName: null, type: 'Faculty',  displayOrder: 55 },
+  { name: 'FACULTY OF ENTREPRENEURSHIP & SMALL BUSINESS MANAGEMENT', shortName: null, type: 'Faculty', displayOrder: 56 },
+  { name: 'FACULTY OF GRADUATE STUDIES AND RESEARCH (FGSR)', shortName: null, type: 'Faculty',     displayOrder: 57 },
+  { name: 'FACULTY OF MANAGEMENT',                            shortName: null, type: 'Faculty',     displayOrder: 58 },
+  { name: 'FACULTY OF MARKETING & INTERNATIONAL BUSINESS',    shortName: null, type: 'Faculty',     displayOrder: 59 },
+  { name: 'FACULTY OF PROCUREMENT & LOGISTICS MANAGEMENT',    shortName: null, type: 'Faculty',     displayOrder: 60 },
+  { name: 'FACULTY OF SCIENCE EDUCATION',                     shortName: null, type: 'Faculty',     displayOrder: 61 },
+  { name: 'FACULTY OF TOURISM, HOSPITALITY & LANGUAGES',      shortName: null, type: 'Faculty',     displayOrder: 62 },
+  { name: 'FACULTY OF VOCATIONAL AND DISTANCE EDUCATION',     shortName: null, type: 'Faculty',     displayOrder: 63 },
+  { name: 'HEALTH SERVICES CENTRE',                           shortName: null, type: 'Unit',        displayOrder: 64 },
+  { name: 'HUMAN RESOURCE DIRECTORATE',                       shortName: null, type: 'Directorate', displayOrder: 65 },
+  { name: 'ICT CENTRE',                                       shortName: null, type: 'Unit',        displayOrder: 66 },
+  { name: 'INTERNAL AUDIT DIRECTORATE',                       shortName: null, type: 'Directorate', displayOrder: 67 },
+  { name: 'INTERNATIONAL BUSINESS AND TRADE, FACULTY OF MARKETING & INTERNATIONAL BUSINESS', shortName: null, type: 'Unit', displayOrder: 68 },
+  { name: 'KNOWLEDGE FOR DEVELOPMENT CENTRE, FACULTY OF MANAGEMENT', shortName: null, type: 'Unit', displayOrder: 69 },
+  { name: 'LANGUAGES CENTRE',                                 shortName: null, type: 'Unit',        displayOrder: 70 },
+  { name: 'LEADERSHIP CENTER',                                shortName: null, type: 'Unit',        displayOrder: 71 },
+  { name: 'MANAGEMENT DEVELOPMENT SECTION, PRINCIPAL\'S OFFICE', shortName: null, type: 'Unit',      displayOrder: 72 },
+  { name: 'MANAGEMENT OF INFORMATION SYSTEM (MIS)',           shortName: null, type: 'Unit',        displayOrder: 73 },
+  { name: 'MICRO FINANCE CENTRE, PRINCIPAL\'S OFFICE',        shortName: null, type: 'Unit',        displayOrder: 74 },
+  { name: 'MUBS REGIONAL CAMPUS MBARARA',                     shortName: null, type: 'Unit',        displayOrder: 75 },
+  { name: 'MUBS REGIONAL CAMPUS-ARUA',                        shortName: null, type: 'Unit',        displayOrder: 76 },
+  { name: 'MUBS REGIONAL CAMPUS-JINJA',                       shortName: null, type: 'Unit',        displayOrder: 77 },
+  { name: 'MUBS REGIONAL CAMPUS-MBALE',                       shortName: null, type: 'Unit',        displayOrder: 78 },
+  { name: 'OFFICE OF IMAM',                                   shortName: null, type: 'Office',      displayOrder: 79 },
+  { name: 'PRINCIPAL\'S OFFICE',                              shortName: null, type: 'Office',      displayOrder: 80 },
+  { name: 'PROCUREMENT AND DISPOSAL UNIT',                    shortName: null, type: 'Unit',        displayOrder: 81 },
+  { name: 'PROJECT & SMALL BUSINESS MANAGEMENT, FACULTY OF ENTREPRENEURSHIP & SMALL BUSINESS MANAGEMENT', shortName: null, type: 'Unit', displayOrder: 82 },
+  { name: 'PUBLIC RELATIONS & PROMOTIONS OFFICE',             shortName: null, type: 'Office',      displayOrder: 83 },
+  { name: 'PUBLICATION UNIT',                                 shortName: null, type: 'Unit',        displayOrder: 84 },
+  { name: 'RBS OFFICE, BOARD - RBS',                          shortName: null, type: 'Office',      displayOrder: 85 },
+  { name: 'RISK UNIT, PRINCIPAL\'S OFFICE',                   shortName: null, type: 'Unit',        displayOrder: 86 },
+  { name: 'SCHOOL BURSAR\'S OFFICE',                          shortName: null, type: 'Office',      displayOrder: 87 },
+  { name: 'SCHOOL LIBRARIAN\'S OFFICE',                       shortName: null, type: 'Office',      displayOrder: 88 },
+  { name: 'SCHOOL REGISTRAR\'S OFFICE',                       shortName: null, type: 'Office',      displayOrder: 89 },
+  { name: 'SCHOOL SECRETARY\'S OFFICE',                       shortName: null, type: 'Office',      displayOrder: 90 },
+  { name: 'SECURITY SECTION',                                 shortName: null, type: 'Unit',        displayOrder: 91 },
+  { name: 'SECURITY SECTION, MUBS REGIONAL CAMPUS MBARARA',   shortName: null, type: 'Unit',        displayOrder: 92 },
+  { name: 'SECURITY SECTION, MUBS REGIONAL CAMPUS-MBALE',     shortName: null, type: 'Unit',        displayOrder: 93 },
+  { name: 'SECURITY SECTION, MUBS REGIONAL CAMPUS-ARUA',      shortName: null, type: 'Unit',        displayOrder: 94 },
+  { name: 'SECURITY SECTION, MUBS REGIONAL CAMPUS-JINJA',     shortName: null, type: 'Unit',        displayOrder: 95 },
+  { name: 'SPORTS TUTOR\'S OFFICE, DEAN OF STUDENTS\' OFFICE', shortName: null, type: 'Office',     displayOrder: 96 },
+  { name: 'ST JAMES CHAPEL',                                  shortName: null, type: 'Unit',        displayOrder: 97 },
+  { name: 'ST. CHARLES LWANGA CATHOLIC COMMUNITY',            shortName: null, type: 'Unit',        displayOrder: 98 },
+  { name: 'STRATEGY & PROJECTS',                              shortName: null, type: 'Unit',        displayOrder: 99 },
+  { name: 'STUDENTS COUNSELLING & DRUGS UNIT',                shortName: null, type: 'Unit',        displayOrder: 100 },
+  { name: 'STUDENTS\' AFFAIRS SECTION, PRINCIPAL\'S OFFICE',  shortName: null, type: 'Unit',        displayOrder: 101 }
 ];
 
 /* ------------------------------------------------------------------ */
-/* Slug helper                                                         */
+/* Slug helper — matches the model's hook                             */
 /* ------------------------------------------------------------------ */
 function slugify(name) {
   return name
@@ -54,7 +127,8 @@ function slugify(name) {
     .replace(/&/g, 'and')
     .replace(/[’']/g, '')
     .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 240);
 }
 
 /* ------------------------------------------------------------------ */
@@ -63,40 +137,58 @@ function slugify(name) {
 (async () => {
   try {
     await sequelize.authenticate();
-    await sequelize.sync({ alter: true });
-    console.log('✅ Connected & synced');
+    console.log('✅ Connected to', sequelize.config.database);
 
-    // Wipe existing departments
-    // Comment this line out if you want to keep existing rows and only upsert.
-    const wiped = await Department.destroy({ where: {}, truncate: false });
-    if (wiped) console.log(`🧹 Removed ${wiped} existing departments`);
+    /* ---- Guard: refuse to wipe if jobs reference departments ---- */
+    const existing = await Department.count();
+    if (existing > 0) {
+      const jobCount = await Job.count();
+      if (jobCount > 0) {
+        console.error(`❌ Cannot re-seed: ${jobCount} job(s) currently reference departments.`);
+        console.error('   Delete the jobs first, or seed into a fresh database.');
+        process.exit(1);
+      }
+      console.log(`🧹 Removing ${existing} existing departments...`);
+      await Department.destroy({ where: {}, truncate: true });
+    }
 
-    // Insert
-    const prepared = departments.map((d) => ({
-      mubsId: d.mubsId,
-      name: d.name,
+    /* ---- Prepare rows ---- */
+    const rows = departments.map((d) => ({
+      name: d.name.trim(),
+      shortName: d.shortName,
       slug: slugify(d.name),
-      shortName: d.shortName || null,
       type: d.type,
+      description: null,
       active: true,
-      displayOrder: d.displayOrder || 100
+      displayOrder: d.displayOrder
     }));
 
-    await Department.bulkCreate(prepared, { validate: true });
-    console.log(`✅ Seeded ${prepared.length} departments`);
+    /* ---- Insert ---- */
+    await Department.bulkCreate(rows, { validate: true });
 
-    // Summary by type
-    const counts = await Department.findAll({
+    /* ---- Report ---- */
+    const total = await Department.count();
+    console.log(`✅ Seeded ${total} departments`);
+
+    const byType = await Department.findAll({
       attributes: ['type', [sequelize.fn('COUNT', sequelize.col('id')), 'n']],
       group: ['type'],
       raw: true
     });
     console.log('📊 By type:');
-    counts.forEach((c) => console.log(`   ${c.type}: ${c.n}`));
+    byType
+      .sort((a, b) => a.type.localeCompare(b.type))
+      .forEach((r) => console.log(`   ${r.type}: ${r.n}`));
 
     process.exit(0);
   } catch (err) {
-    console.error('❌ Seed failed:', err);
+    console.error('❌ Seed failed:', err.message);
+    if (err.original) console.error('   SQL error:', err.original.sqlMessage);
+    if (err.errors) {
+      err.errors.forEach((e) =>
+        console.error(`   - ${e.path}: ${e.message} (value: ${e.value})`)
+      );
+    }
     process.exit(1);
   }
 })();
