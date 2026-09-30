@@ -2,8 +2,8 @@ footer.site-footer
   .container
     .footer-grid
       .footer-brand
-        .logo
-          .logo-icon M
+        a.logo(href="/")
+          img.logo-img(src="/images/logo.png" alt="MUBS Job Portal")
           .logo-text
             strong MUBS
             span Job Portal
@@ -23,11 +23,11 @@ footer.site-footer
           li: a(href="/auth/register") Create Account
 
       .footer-col
-        h4 For Departments
+        h4 For Staff
         ul
           li: a(href="/jobs/new") Post a Vacancy
-          li: a(href="/departments") Browse Departments
-          li: a(href="#") Employer Guide
+          li: a(href="https://www.mubs.ac.ug" target="_blank" rel="noopener") MUBS Website
+          li: a(href="#") User Guide
           li: a(href="#") Contact HR
 
       .footer-col
@@ -40,4 +40,4 @@ footer.site-footer
 
     .footer-bottom
       p © #{new Date().getFullYear()} Makerere University Business School. All rights reserved.
-      p Made with #[i.fas.fa-heart(style="color: #ef4444")] for the MUBS community
+      p Built with #[i.fas.fa-heart(style="color: #ef4444")] by the #[a(href="https://mubs.ac.ug" target="_blank" rel="noopener") eLearning Centre]

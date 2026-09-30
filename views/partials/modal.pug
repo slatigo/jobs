@@ -1,0 +1,20 @@
+#confirmModal.modal-backdrop(aria-hidden="true")
+  .modal
+    header.modal-header
+      .modal-icon#modalIcon
+        i.fas.fa-question
+      div
+        h3#modalTitle Confirm
+        p#modalSubtitle This action may not be reversible.
+
+    .modal-body
+      #modalMessage.modal-message
+      .form-group#modalReasonGroup(style="display:none")
+        label(for="modalReason")
+          i.fas.fa-comment-alt
+          |  Reason (optional)
+        textarea#modalReason(rows="3" maxlength="500" placeholder="Why?")
+
+    footer.modal-footer
+      button.btn.btn-ghost(type="button" onclick="closeModal()") Cancel
+      button.btn.btn-danger(type="button" id="modalConfirm") Confirm

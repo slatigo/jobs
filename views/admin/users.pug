@@ -1,0 +1,178 @@
+extends ../layout
+
+block content
+  section.page-header
+    .container
+      p.breadcrumb
+        a(href="/admin") Admin
+        span.sep /
+        span Users
+      h1 Manage Users
+      p #{total} user#{total === 1 ? '' : 's'} registered
+
+  section.admin-section
+    .container
+
+      //- ============================================================
+      //- ACTIONS
+      //- ============================================================
+      .admin-actions
+        a.btn.btn-primary(href="/admin/users/new")
+          i.fas.fa-user-plus
+          |  Create User
+
+      //- ============================================================
+      //- FILTERS
+      //- ============================================================
+      form.filter-form-inline(action="/admin/users" method="GET")
+        input(
+          type="text"
+          name="search"
+          value=filters.search
+          placeholder="Search name or email..."
+        )
+
+        select(name="role")
+          option(value="All" selected=filters.role === 'All') All Roles
+          option(value="applicant" selected=filters.role === 'applicant') Applicant
+          option(value="employer" selected=filters.role === 'employer') Employer
+          option(value="admin" selected=filters.role === 'admin') Admin
+
+        button.btn.btn-primary(type="submit")
+          i.fas.fa-search
+          |  Filter
+
+        a.btn.btn-ghost(href="/admin/users") Clear
+
+      //- ============================================================
+      //- USER TABLE
+      //- ============================================================
+      if users && users.length
+        .table-card
+          table.admin-table
+            thead
+              tr
+                th Name
+                th Email
+                th Role
+                th Phone
+                th Joined
+                th Actions
+
+            tbody
+              each u in users
+                tr
+                  td
+                    .user-cell
+                      .user-avatar= (u.name || 'U').charAt(0).toUpperCase()
+                      strong= u.name
+
+                  td
+                    a(href=`mailto:${u.email}`)= u.email
+
+                  td
+                    form(action=`/admin/users/${u.id}/role` method="POST")
+                      select.role-select(
+                        name="role"
+                        onchange="this.form.submit()"
+                        disabled=(u.id === user.id)
+                        title=(u.id === user.id ? 'You cannot change your own role' : 'Change role')
+                      )
+                        option(value="applicant" selected=u.role === 'applicant') Applicant
+                        option(value="employer" selected=u.role === 'employer') Employer
+                        option(value="admin" selected=u.role === 'admin') Admin
+
+                  td
+                    if u.phone
+                      a(href=`tel:${u.phone}`)= u.phone
+                    else
+                      span.text-muted-inline —
+
+                  td
+                    - const joined = new Date(u.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+                    = joined
+
+                  td.td-actions
+                    .quick-actions
+                      //- Edit
+                      a.icon-btn(
+                        href=`/admin/users/${u.id}/edit`
+                        title="Edit user"
+                      )
+                        i.fas.fa-edit
+
+                      //- Reset password
+                      button.icon-btn(
+                        type="button"
+                        title="Reset password"
+                        onclick=`document.getElementById('reset-${u.id}').showModal()`
+                      )
+                        i.fas.fa-key
+
+                      //- Delete (not self)
+                      if u.id !== user.id
+                        form(action=`/admin/users/${u.id}/delete` method="POST" onsubmit="return confirm('Permanently delete this user? This cannot be undone.')")
+                          button.icon-btn.icon-btn-danger(
+                            type="submit"
+                            title="Delete user"
+                          )
+                            i.fas.fa-trash
+
+                //- Reset password dialog (native <dialog>)
+                tr.hidden-dialog-row
+                  td(colspan="6")
+                    dialog.user-dialog(id=`reset-${u.id}`)
+                      form(action=`/admin/users/${u.id}/reset-password` method="POST")
+                        h3 Reset Password
+                        p.dialog-subtitle
+                          | Set a new temporary password for 
+                          strong= u.name
+
+                        input.dialog-input(
+                          type="text"
+                          name="newPassword"
+                          required
+                          minlength="6"
+                          placeholder="New password (min 6 characters)"
+                          autocomplete="off"
+                        )
+
+                        small.text-muted
+                          | Share securely. Ask the user to change it after first login.
+
+                        .dialog-actions
+                          button.btn.btn-ghost(
+                            type="button"
+                            onclick=`document.getElementById('reset-${u.id}').close()`
+                          ) Cancel
+                          button.btn.btn-primary(type="submit")
+                            i.fas.fa-check
+                            |  Reset Password
+
+      else
+        .empty-state
+          i.fas.fa-users-slash
+          h3 No users found
+          if filters.role !== 'All' || filters.search
+            p Try adjusting your filters or search terms.
+            a.btn.btn-primary(href="/admin/users") View All Users
+          else
+            p No users registered yet.
+            a.btn.btn-primary(href="/admin/users/new") Create the first user
+
+      //- ============================================================
+      //- PAGINATION
+      //- ============================================================
+      if totalPages > 1
+        nav.pagination
+          if currentPage > 1
+            a.page-link(href=`/admin/users?page=${currentPage - 1}&search=${filters.search}&role=${filters.role}`)
+              i.fas.fa-chevron-left
+          each p in Array.from({ length: totalPages }, (_, i) => i + 1)
+            if p === currentPage
+              span.page-link.active= p
+            else
+              a.page-link(href=`/admin/users?page=${p}&search=${filters.search}&role=${filters.role}`)= p
+          if currentPage < totalPages
+            a.page-link(href=`/admin/users?page=${currentPage + 1}&search=${filters.search}&role=${filters.role}`)
+              i.fas.fa-chevron-right

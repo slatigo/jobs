@@ -3,6 +3,7 @@ const router = express.Router();
 const { User } = require('../models');
 const { sendWelcomeEmail ,sendPasswordResetEmail} = require('../utils/mail');
 const crypto = require('crypto');
+const passport = require('passport');
 /* ------------------------------------------------------------------ */
 /* Helpers                                                             */
 /* ------------------------------------------------------------------ */
@@ -342,4 +343,46 @@ router.post('/reset-password/:token', async (req, res) => {
     res.redirect(`/auth/reset-password/${req.params.token}`);
   }
 });
+
+/* ================================================================== */
+/* GOOGLE OAUTH — GET /auth/google                                     */
+/* ================================================================== */
+router.get(
+  '/google',
+  passport.authenticate('google', {
+    scope: ['profile', 'email'],
+    prompt: 'select_account'    // always ask which account
+  })
+);
+
+/* ================================================================== */
+/* GOOGLE OAUTH — GET /auth/google/callback                            */
+/* ================================================================== */
+router.get(
+  '/google/callback',
+  passport.authenticate('google', {
+    failureRedirect: '/auth/login',
+    failureFlash: 'Google sign-in failed. Please try again.'
+  }),
+  (req, res) => {
+    /* Passport put the user on req.user — bridge into our session */
+    const u = req.user;
+
+    req.session.regenerate((err) => {
+      if (err) {
+        console.error('[GOOGLE] session regen:', err);
+        req.flash('error', 'Login failed. Please try again.');
+        return res.redirect('/auth/login');
+      }
+      req.session.user = {
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        role: u.role
+      };
+      req.flash('success', `Welcome, ${u.name.split(' ')[0]}!`);
+      res.redirect('/');
+    });
+  }
+);
 module.exports = router;

@@ -226,3 +226,117 @@
   flex-wrap: wrap;
 }
 .actions-cell form { display: inline; }
+
+/* ==================================================================
+   ADMIN USER TABLE — avatar + name cell
+   ================================================================== */
+.user-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.user-cell strong {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gray-900);
+}
+
+/* ==================================================================
+   INLINE ROLE SELECT
+   ================================================================== */
+.role-select {
+  padding: 6px 10px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  background: #fff;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.role-select:hover { border-color: var(--primary); }
+.role-select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(30, 64, 175, .1);
+}
+.role-select:disabled {
+  background: var(--gray-100);
+  cursor: not-allowed;
+  opacity: .7;
+}
+
+/* ==================================================================
+   HIDDEN DIALOG ROW (native <dialog> pattern in tables)
+   ================================================================== */
+.hidden-dialog-row {
+  display: none;
+}
+
+.user-dialog {
+  border: none;
+  border-radius: var(--radius);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, .25);
+  padding: 28px;
+  max-width: 420px;
+  width: 100%;
+}
+.user-dialog::backdrop {
+  background: rgba(15, 23, 42, .55);
+  backdrop-filter: blur(4px);
+}
+.user-dialog h3 {
+  font-size: 18px;
+  font-weight: 800;
+  margin: 0 0 6px;
+  letter-spacing: -.01em;
+}
+.dialog-subtitle {
+  font-size: 13px;
+  color: var(--gray-500);
+  margin: 0 0 16px;
+}
+.dialog-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-family: inherit;
+  margin-bottom: 8px;
+}
+.dialog-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(30, 64, 175, .1);
+}
+.dialog-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+/* ==================================================================
+   SMALL MUTED INLINE TEXT (for table subtext like ref, email)
+   ================================================================== */
+.text-muted-inline {
+  color: var(--gray-500);
+  font-size: 12px;
+}

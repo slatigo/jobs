@@ -1,0 +1,115 @@
+extends ../layout
+
+block content
+  //- Compute values inside the block
+  - const isEdit = typeof user !== 'undefined' && user !== null
+  - const formAction = isEdit ? `/admin/users/${user.id}` : '/admin/users'
+  - const submitLabel = isEdit ? 'Save Changes' : 'Create User'
+
+  section.page-header
+    .container
+      p.breadcrumb
+        a(href="/admin") Admin
+        span.sep /
+        a(href="/admin/users") Users
+        span.sep /
+        span= isEdit ? 'Edit' : 'Create'
+      h1= isEdit ? 'Edit User' : 'Create User'
+      p= isEdit ? `Update details for ${user.name}` : 'Add an employer, admin, or applicant to the portal'
+
+  section.admin-section
+    .container
+      .form-card
+        form(action=formAction method="POST")
+          .form-row
+            .form-group
+              label Full Name *
+              input(
+                type="text"
+                name="name"
+                required
+                maxlength="120"
+                value=isEdit ? user.name : (formName && formName[0] ? formName[0] : '')
+              )
+
+            .form-group
+              label Email *
+              input(
+                type="email"
+                name="email"
+                required
+                maxlength="160"
+                value=isEdit ? user.email : (formEmail && formEmail[0] ? formEmail[0] : '')
+              )
+
+          .form-row
+            .form-group
+              label Role *
+              select(name="role" id="roleSelect" required)
+                each r in ['applicant', 'employer', 'admin']
+                  option(
+                    value=r
+                    selected=(isEdit ? user.role === r : (formRole && formRole[0] === r))
+                  )= r.charAt(0).toUpperCase() + r.slice(1)
+
+            .form-group
+              label Phone
+              input(
+                type="tel"
+                name="phone"
+                maxlength="30"
+                value=isEdit ? (user.phone || '') : (formPhone && formPhone[0] ? formPhone[0] : '')
+              )
+
+          #companyField
+            .form-group
+              label Company / Department
+              input(
+                type="text"
+                name="company"
+                maxlength="150"
+                placeholder="e.g. Human Resource Directorate"
+                value=isEdit ? (user.company || '') : (formCompany && formCompany[0] ? formCompany[0] : '')
+              )
+              small.text-muted Shown for employers
+
+          .form-group
+            if isEdit
+              label New Password
+              input(
+                type="text"
+                name="password"
+                minlength="6"
+                placeholder="Leave blank to keep the current password"
+              )
+              small.text-muted Leave blank to keep the existing password unchanged
+            else
+              label Initial Password *
+              input(
+                type="text"
+                name="password"
+                required
+                minlength="6"
+                placeholder="User will be prompted to change this on first login"
+              )
+              small.text-muted Share this securely — do not send by email or SMS
+
+          .form-actions
+            a.btn.btn-ghost(href="/admin/users") Cancel
+            button.btn.btn-primary(type="submit")
+              i.fas.fa-check
+              |  #{submitLabel}
+
+block scripts
+  script.
+    (function () {
+      const roleSelect = document.getElementById('roleSelect');
+      const companyField = document.getElementById('companyField');
+
+      function sync() {
+        companyField.style.display = roleSelect.value === 'employer' ? 'block' : 'none';
+      }
+
+      roleSelect.addEventListener('change', sync);
+      sync();
+    })();

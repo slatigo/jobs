@@ -11,32 +11,32 @@ const User = sequelize.define('User', {
     unique: true,
     validate: { isEmail: true }
   },
-  password: { type: DataTypes.STRING(255), allowNull: false },
+
+  /* Password optional — Google users have no password */
+  password: { type: DataTypes.STRING(255), allowNull: true },
+
+  /* Google OAuth ID */
+  googleId: {
+    type: DataTypes.STRING(64),
+    allowNull: true,
+    unique: true
+  },
+
   role: {
     type: DataTypes.ENUM('applicant', 'employer', 'admin'),
     defaultValue: 'applicant'
   },
   phone: { type: DataTypes.STRING(30) },
   course: { type: DataTypes.STRING(120) },
-  yearOfGraduation: {
-    type: DataTypes.INTEGER.UNSIGNED,
-    allowNull: true,
-    validate: { min: 1950, max: 2100 }
-  },
   company: { type: DataTypes.STRING(150) },
-  passwordResetToken: {
-    type: DataTypes.STRING(255),
-    allowNull: true
-  },
-  passwordResetExpires: {
-    type: DataTypes.DATE,
-    allowNull: true
-  }
+
+  passwordResetToken: { type: DataTypes.STRING(255), allowNull: true },
+  passwordResetExpires: { type: DataTypes.DATE, allowNull: true }
 }, {
   tableName: 'users',
   hooks: {
     beforeSave: async (user) => {
-      if (user.changed('password')) {
+      if (user.changed('password') && user.password) {
         user.password = await bcrypt.hash(user.password, 10);
       }
     }
@@ -44,7 +44,8 @@ const User = sequelize.define('User', {
 });
 
 User.prototype.comparePassword = function (password) {
-  return bcrypt.compare(this.password, password);
+  if (!this.password) return Promise.resolve(false);
+  return bcrypt.compare(password, this.password);
 };
 
 User.prototype.toSafeJSON = function () {

@@ -6,9 +6,10 @@ const session = require('express-session');
 const SequelizeStore = require('connect-session-sequelize')(session.Store);
 const flash = require('connect-flash');
 const methodOverride = require('method-override');
+const passport = require('./config/passport');
 
 /* ------------------------------------------------------------------ */
-/* Ensure required folders exist before anything else runs             */
+/* Ensure required folders exist                                       */
 /* ------------------------------------------------------------------ */
 const REQUIRED_DIRS = [
   path.join(__dirname, 'uploads'),
@@ -45,7 +46,7 @@ app.use(express.json());
 app.use(methodOverride('_method'));
 
 /* ------------------------------------------------------------------ */
-/* Request logger (must be ABOVE routes to see everything)             */
+/* Request logger                                                      */
 /* ------------------------------------------------------------------ */
 app.use((req, res, next) => {
   console.log('>>>', req.method, req.originalUrl);
@@ -53,7 +54,7 @@ app.use((req, res, next) => {
 });
 
 /* ------------------------------------------------------------------ */
-/* Session store in MySQL                                              */
+/* Session (must come BEFORE passport.session)                         */
 /* ------------------------------------------------------------------ */
 const sessionStore = new SequelizeStore({ db: sequelize, tableName: 'sessions' });
 
@@ -62,10 +63,21 @@ app.use(session({
   store: sessionStore,
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 1000 * 60 * 60 * 24, httpOnly: true }
+  cookie: {
+    maxAge: 1000 * 60 * 60 * 24,
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax'
+  }
 }));
 
 app.use(flash());
+
+/* ------------------------------------------------------------------ */
+/* Passport (must come AFTER session + flash)                          */
+/* ------------------------------------------------------------------ */
+app.use(passport.initialize());
+app.use(passport.session());
 
 /* ------------------------------------------------------------------ */
 /* Global view locals                                                  */
@@ -75,10 +87,19 @@ app.use((req, res, next) => {
   res.locals.success = req.flash('success');
   res.locals.error = req.flash('error');
   res.locals.currentPath = req.path;
+
+  // Form repopulation flashes
+  res.locals.formName    = req.flash('formName');
+  res.locals.formEmail   = req.flash('formEmail');
+  res.locals.formRole    = req.flash('formRole');
+  res.locals.formPhone   = req.flash('formPhone');
+  res.locals.formCourse  = req.flash('formCourse');
+  res.locals.formCompany = req.flash('formCompany');
+
   next();
 });
 
-//* ------------------------------------------------------------------ */
+/* ------------------------------------------------------------------ */
 /* Routes                                                              */
 /* ------------------------------------------------------------------ */
 app.use('/',            require('./routes/index'));
@@ -87,15 +108,16 @@ app.use('/auth',        require('./routes/auth'));
 app.use('/admin',       require('./routes/admin'));
 app.use('/departments', require('./routes/departments'));
 app.use('/files',       require('./routes/files'));
+
 /* ------------------------------------------------------------------ */
-/* 404 handler (must be LAST of the non-error middleware)              */
+/* 404 handler                                                         */
 /* ------------------------------------------------------------------ */
 app.use((req, res) => {
   res.status(404).render('404', { title: 'Page Not Found' });
 });
 
 /* ------------------------------------------------------------------ */
-/* Error handler (4 args → Express treats this as error middleware)    */
+/* Error handler                                                       */
 /* ------------------------------------------------------------------ */
 app.use((err, req, res, next) => {
   console.error('[APP ERROR]', err.stack);
@@ -116,7 +138,6 @@ app.use((err, req, res, next) => {
     console.log('✅ MySQL connected');
     await sequelize.sync({ alter: false });
 
-    // Session table needs to exist before the app starts serving
     await sessionStore.sync();
     console.log('✅ Sessions table ready');
 

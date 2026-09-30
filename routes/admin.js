@@ -4,9 +4,9 @@ const { Op } = require('sequelize');
 const { Job, Application, User, Department, sequelize } = require('../models');
 const { isAdmin } = require('../middleware/auth');
 
-/* ------------------------------------------------------------------ */
+/* ================================================================== */
 /* DASHBOARD — /admin                                                  */
-/* ------------------------------------------------------------------ */
+/* ================================================================== */
 router.get('/', isAdmin, async (req, res) => {
   try {
     const [
@@ -60,9 +60,9 @@ router.get('/', isAdmin, async (req, res) => {
   }
 });
 
-/* ------------------------------------------------------------------ */
+/* ================================================================== */
 /* JOBS — /admin/jobs                                                  */
-/* ------------------------------------------------------------------ */
+/* ================================================================== */
 router.get('/jobs', isAdmin, async (req, res) => {
   try {
     const { search = '', status = 'All', page = 1 } = req.query;
@@ -154,7 +154,7 @@ router.post('/jobs/:id/delete', isAdmin, async (req, res) => {
       return res.redirect('/admin/jobs');
     }
 
-    await job.destroy(); // cascades to applications via FK
+    await job.destroy();
     req.flash('success', 'Job deleted.');
     res.redirect('/admin/jobs');
   } catch (err) {
@@ -164,9 +164,9 @@ router.post('/jobs/:id/delete', isAdmin, async (req, res) => {
   }
 });
 
-/* ------------------------------------------------------------------ */
+/* ================================================================== */
 /* DEPARTMENTS — /admin/departments                                    */
-/* ------------------------------------------------------------------ */
+/* ================================================================== */
 router.get('/departments', isAdmin, async (req, res) => {
   try {
     const departments = await Department.findAll({
@@ -271,9 +271,11 @@ router.post('/departments/:id/delete', isAdmin, async (req, res) => {
   }
 });
 
-/* ------------------------------------------------------------------ */
+/* ================================================================== */
 /* USERS — /admin/users                                                */
-/* ------------------------------------------------------------------ */
+/* ================================================================== */
+
+/* -------- List -------- */
 router.get('/users', isAdmin, async (req, res) => {
   try {
     const { role = 'All', search = '', page = 1 } = req.query;
@@ -295,7 +297,7 @@ router.get('/users', isAdmin, async (req, res) => {
       order: [['createdAt', 'DESC']],
       limit,
       offset,
-      attributes: { exclude: ['password'] }
+      attributes: { exclude: ['password', 'passwordResetToken'] }
     });
 
     res.render('admin/users', {
@@ -313,6 +315,146 @@ router.get('/users', isAdmin, async (req, res) => {
   }
 });
 
+/* -------- Create — GET /admin/users/new -------- */
+router.get('/users/new', isAdmin, (req, res) => {
+  res.render('admin/user-form', {
+    title: 'Create User'
+  });
+});
+
+/* -------- Create — POST /admin/users -------- */
+router.post('/users', isAdmin, async (req, res) => {
+  const { name, email, password, role, company, phone } = req.body;
+
+  const fail = (msg) => {
+    req.flash('error', msg);
+    req.flash('formName', name || '');
+    req.flash('formEmail', email || '');
+    req.flash('formRole', role || '');
+    req.flash('formPhone', phone || '');
+    req.flash('formCompany', company || '');
+    res.redirect('/admin/users/new');
+  };
+
+  try {
+    if (!name || !name.trim()) return fail('Full name is required.');
+    if (!email || !email.trim()) return fail('Email is required.');
+    if (!password || password.length < 6) return fail('Password must be at least 6 characters.');
+    if (!['applicant', 'employer', 'admin'].includes(role)) return fail('Invalid role.');
+
+    const normalized = email.trim().toLowerCase();
+    const existing = await User.findOne({ where: { email: normalized } });
+    if (existing) return fail('A user with that email already exists.');
+
+    await User.create({
+      name: name.trim(),
+      email: normalized,
+      password,
+      role,
+      phone: phone ? phone.trim() : null,
+      company: role === 'employer' && company ? company.trim() : null
+    });
+
+    req.flash('success', `User "${name}" created successfully.`);
+    res.redirect('/admin/users');
+  } catch (err) {
+    console.error('[ADMIN CREATE USER]', err);
+    fail('Error creating user: ' + err.message);
+  }
+});
+
+/* -------- Edit — GET /admin/users/:id/edit -------- */
+router.get('/users/:id/edit', isAdmin, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.params.id, {
+      attributes: { exclude: ['password', 'passwordResetToken'] }
+    });
+    if (!user) {
+      req.flash('error', 'User not found.');
+      return res.redirect('/admin/users');
+    }
+
+    res.render('admin/user-form', {
+      title: `Edit User — ${user.name}`,
+      user
+    });
+  } catch (err) {
+    console.error('[ADMIN EDIT USER GET]', err);
+    req.flash('error', 'Error loading user.');
+    res.redirect('/admin/users');
+  }
+});
+
+/* -------- Edit — POST /admin/users/:id -------- */
+router.post('/users/:id', isAdmin, async (req, res) => {
+  const { name, email, password, role, company, phone } = req.body;
+
+  try {
+    const user = await User.findByPk(req.params.id);
+    if (!user) {
+      req.flash('error', 'User not found.');
+      return res.redirect('/admin/users');
+    }
+
+    /* Validation */
+    if (!name || !name.trim()) {
+      req.flash('error', 'Full name is required.');
+      return res.redirect(`/admin/users/${user.id}/edit`);
+    }
+    if (!email || !email.trim()) {
+      req.flash('error', 'Email is required.');
+      return res.redirect(`/admin/users/${user.id}/edit`);
+    }
+    if (!['applicant', 'employer', 'admin'].includes(role)) {
+      req.flash('error', 'Invalid role.');
+      return res.redirect(`/admin/users/${user.id}/edit`);
+    }
+
+    const normalized = email.trim().toLowerCase();
+
+    /* Uniqueness check (excluding self) */
+    const existing = await User.findOne({
+      where: { email: normalized, id: { [Op.ne]: user.id } }
+    });
+    if (existing) {
+      req.flash('error', 'Another user with that email already exists.');
+      return res.redirect(`/admin/users/${user.id}/edit`);
+    }
+
+    /* Prevent self-demotion */
+    if (user.id === req.session.user.id && role !== 'admin') {
+      req.flash('error', 'You cannot change your own role.');
+      return res.redirect(`/admin/users/${user.id}/edit`);
+    }
+
+    /* Update */
+    user.name = name.trim();
+    user.email = normalized;
+    user.role = role;
+    user.phone = phone ? phone.trim() : null;
+    user.company = role === 'employer' && company ? company.trim() : null;
+
+    /* Only change password if provided */
+    if (password && password.trim()) {
+      if (password.length < 6) {
+        req.flash('error', 'Password must be at least 6 characters.');
+        return res.redirect(`/admin/users/${user.id}/edit`);
+      }
+      user.password = password;
+    }
+
+    await user.save();
+
+    req.flash('success', `User "${user.name}" updated.`);
+    res.redirect('/admin/users');
+  } catch (err) {
+    console.error('[ADMIN EDIT USER POST]', err);
+    req.flash('error', 'Error updating user: ' + err.message);
+    res.redirect(`/admin/users/${req.params.id}/edit`);
+  }
+});
+
+/* -------- Inline role change — POST /admin/users/:id/role -------- */
 router.post('/users/:id/role', isAdmin, async (req, res) => {
   try {
     const { role } = req.body;
@@ -335,7 +477,7 @@ router.post('/users/:id/role', isAdmin, async (req, res) => {
     user.role = role;
     await user.save();
 
-    req.flash('success', `Role updated to ${role}.`);
+    req.flash('success', `${user.name} is now a ${role}.`);
     res.redirect('/admin/users');
   } catch (err) {
     console.error('[ADMIN USER ROLE]', err);
@@ -344,6 +486,34 @@ router.post('/users/:id/role', isAdmin, async (req, res) => {
   }
 });
 
+/* -------- Reset password — POST /admin/users/:id/reset-password -------- */
+router.post('/users/:id/reset-password', isAdmin, async (req, res) => {
+  try {
+    const { newPassword } = req.body;
+    if (!newPassword || newPassword.length < 6) {
+      req.flash('error', 'Password must be at least 6 characters.');
+      return res.redirect('/admin/users');
+    }
+
+    const user = await User.findByPk(req.params.id);
+    if (!user) {
+      req.flash('error', 'User not found');
+      return res.redirect('/admin/users');
+    }
+
+    user.password = newPassword;   // beforeSave hook hashes it
+    await user.save();
+
+    req.flash('success', `Password reset for ${user.name}.`);
+    res.redirect('/admin/users');
+  } catch (err) {
+    console.error('[ADMIN RESET PASSWORD]', err);
+    req.flash('error', 'Error resetting password');
+    res.redirect('/admin/users');
+  }
+});
+
+/* -------- Delete — POST /admin/users/:id/delete -------- */
 router.post('/users/:id/delete', isAdmin, async (req, res) => {
   try {
     const user = await User.findByPk(req.params.id);
@@ -357,8 +527,9 @@ router.post('/users/:id/delete', isAdmin, async (req, res) => {
       return res.redirect('/admin/users');
     }
 
+    const name = user.name;
     await user.destroy();
-    req.flash('success', 'User deleted.');
+    req.flash('success', `User "${name}" deleted.`);
     res.redirect('/admin/users');
   } catch (err) {
     console.error('[ADMIN DELETE USER]', err);
@@ -367,9 +538,9 @@ router.post('/users/:id/delete', isAdmin, async (req, res) => {
   }
 });
 
-/* ------------------------------------------------------------------ */
+/* ================================================================== */
 /* APPLICATIONS — /admin/applications                                  */
-/* ------------------------------------------------------------------ */
+/* ================================================================== */
 router.get('/applications', isAdmin, async (req, res) => {
   try {
     const { status = 'All', page = 1 } = req.query;
