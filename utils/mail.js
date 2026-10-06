@@ -167,7 +167,7 @@ async function sendApplicationReceivedEmail({
   const body = `
     <p>Hi <strong>${name}</strong>,</p>
 
-    <p>Thank you for applying for <strong>${jobTitle}</strong> at Makerere University Business School. We've received your application and it's now under consideration.</p>
+    <p>Thank you for applying for the position of <strong>${jobTitle}</strong> at Makerere University Business School. We've received your application and it's now under consideration.</p>
 
     <p style="margin:16px 0;padding:16px;background:#f1f5f9;border-radius:8px;color:#334155;font-size:14px;">
       <strong style="display:block;margin-bottom:6px;color:#1e293b;">Application details</strong>
