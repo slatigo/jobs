@@ -44,7 +44,11 @@
   margin-bottom: 12px;
   letter-spacing: -.02em;
 }
-
+.auth-container--narrow {
+  display: block;              /* ← add this */
+  grid-template-columns: 1fr;  /* harmless, can stay or go */
+  max-width: 480px;
+}
 .auth-visual-content p {
   opacity: .9;
   margin-bottom: 32px;

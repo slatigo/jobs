@@ -4,6 +4,8 @@ const { User } = require('../models');
 const { sendWelcomeEmail ,sendPasswordResetEmail} = require('../utils/mail');
 const crypto = require('crypto');
 const passport = require('passport');
+const { isAuthenticated } = require('../middleware/auth');
+const { Op } = require('sequelize');
 /* ------------------------------------------------------------------ */
 /* Helpers                                                             */
 /* ------------------------------------------------------------------ */
@@ -372,4 +374,50 @@ router.get(
     });
   }
 );
+
+/* ================================================================== */
+/* CHANGE PASSWORD — GET (logged-in only)                              */
+/* ================================================================== */
+router.get('/change-password', isAuthenticated, (req, res) => {
+  res.render('auth/change-password', { title: 'Change Password' });
+});
+
+/* ================================================================== */
+/* CHANGE PASSWORD — POST                                              */
+/* ================================================================== */
+router.post('/change-password', isAuthenticated, async (req, res) => {
+  const { currentPassword, password, passwordConfirm } = req.body;
+
+  const fail = (msg) => {
+    req.flash('error', msg);
+    return res.redirect('/auth/change-password');
+  };
+
+  try {
+    if (!currentPassword) return fail('Please enter your current password.');
+    if (!password || password.length < 6) return fail('New password must be at least 6 characters.');
+    if (password !== passwordConfirm) return fail('New passwords do not match.');
+    if (password === currentPassword) return fail('New password must be different from the current one.');
+
+    const user = await User.findByPk(req.session.user.id);
+    if (!user) {
+      // session references a user that no longer exists
+      req.session.destroy(() => {});
+      return res.redirect('/auth/login');
+    }
+
+    const ok = await user.comparePassword(currentPassword);
+    if (!ok) return fail('Current password is incorrect.');
+
+    user.password = password;   // model hook hashes
+    await user.save();
+
+    req.flash('success', 'Password updated successfully.');
+    res.redirect('/auth/change-password');
+  } catch (err) {
+    console.error('[CHANGE PASSWORD]', err);
+    req.flash('error', 'Something went wrong. Please try again.');
+    res.redirect('/auth/change-password');
+  }
+});
 module.exports = router;
