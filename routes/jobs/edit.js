@@ -4,6 +4,7 @@ const sanitizeHtml = require('sanitize-html');
 const { Job, Department } = require('../../models');
 const { isAuthenticated } = require('../../middleware/auth');
 const { cleanOpts } = require('../../utils/sanitizeOptions');
+const { fromInput, toInput } = require('../../utils/appTime');
 
 /* ================================================================== */
 /* GET /jobs/:id/edit — render the edit form                           */
@@ -31,13 +32,14 @@ router.get('/:id/edit', isAuthenticated, async (req, res) => {
 
     res.render('jobs/job-form', {
       title: `Edit — ${job.title}`,
-      job,                    // ← presence of `job` flips the template to edit mode
+      job,
       departments,
       JOB_TYPES: Job.JOB_TYPES,
       CONTRACT_TERMS: Job.CONTRACT_TERMS,
       REF_CATEGORIES: Job.REF_CATEGORIES,
       VISIBILITY: Job.VISIBILITY,
-      form: {}                // unused in edit mode, but harmless
+      form: {},
+      deadlineInputValue: toInput(job.deadline)   // pre-formatted for <input type="datetime-local">
     });
   } catch (err) {
     console.error('[JOBS EDIT GET]', err);
@@ -94,9 +96,15 @@ router.post('/:id/edit', isAuthenticated, async (req, res) => {
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail.trim()))
                                                errors.contactEmail   = 'Enter a valid email address.';
 
+    /* ---- Parse deadline as Kampala time + reject past dates ---- */
+    let parsedDeadline = null;
     if (deadline) {
-      const d = new Date(deadline);
-      if (isNaN(d.getTime())) errors.deadline = 'Invalid date.';
+      parsedDeadline = fromInput(deadline);
+      if (!parsedDeadline) {
+        errors.deadline = 'Invalid date or time.';
+      } else if (parsedDeadline <= new Date()) {
+        errors.deadline = 'Deadline must be in the future.';
+      }
     }
 
     if (Object.keys(errors).length > 0) return bad(errors, 'Please fix the highlighted fields.');
@@ -129,7 +137,7 @@ router.post('/:id/edit', isAuthenticated, async (req, res) => {
     job.grade         = grade ? grade.trim() : null;
     job.vacancies     = vacancies ? Math.max(parseInt(vacancies, 10) || 1, 1) : 1;
     job.description   = cleanDescription;
-    job.deadline      = new Date(deadline);
+    job.deadline      = parsedDeadline;
     job.contactEmail  = contactEmail.trim();
     job.contactPhone  = contactPhone ? contactPhone.trim() : null;
     job.visibility    = validVisibility;

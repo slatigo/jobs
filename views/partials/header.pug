@@ -16,6 +16,9 @@ header.site-header
       a.nav-link(href="/" class=path === '/' ? 'active' : '') Home
       a.nav-link(href="/jobs" class=(path.startsWith('/jobs') && path !== '/jobs/new') ? 'active' : '') Jobs
 
+      if user && (user.role === 'applicant' || user.role === 'admin')
+        a.nav-link(href="/jobs/my-applications" class=path.startsWith('/my-applications') ? 'active' : '') My Applications
+
       if user && user.role === 'admin'
         a.nav-link(href="/departments" class=path.startsWith('/departments') ? 'active' : '') Departments
 
@@ -30,9 +33,12 @@ header.site-header
           .user-menu
             button.user-btn(type="button" aria-haspopup="true")
               .avatar= (user.name || 'U').charAt(0).toUpperCase()
-              span= (user.name || 'User').split(' ')[0]
+              span= user.name
               i.fas.fa-chevron-down
             .dropdown
+              a(href="/jobs/my-applications")
+                i.fas.fa-file-alt
+                | My Applications
               a(href="/auth/change-password")
                 i.fas.fa-key
                 | Change Password

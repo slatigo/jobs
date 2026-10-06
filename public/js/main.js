@@ -66,6 +66,7 @@ window.copyShareLink = function (btn) {
     }
   };
 
+
   if (navigator.clipboard && window.isSecureContext) {
     navigator.clipboard.writeText(url)
       .then(done)
@@ -74,4 +75,34 @@ window.copyShareLink = function (btn) {
     legacyCopy();
   }
 };
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.filter-toggle').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const targetId = btn.getAttribute('aria-controls');
+      const target = document.getElementById(targetId);
+      if (!target) return;
+
+      const isOpen = !target.hidden;
+      target.hidden = isOpen;
+      btn.setAttribute('aria-expanded', String(!isOpen));
+      btn.classList.toggle('is-open', !isOpen);
+    });
+  });
+
+  // Auto-open if any non-search filter is active
+  const anyActive = ['department','type','terms','location','status'].some((key) => {
+    const el = document.querySelector(`[name="${key}"]`);
+    return el && el.value && el.value !== 'All' && el.value !== '';
+  });
+  if (anyActive) {
+    const toggle = document.querySelector('.filter-toggle');
+    const panel = document.getElementById('filter-extra');
+    if (toggle && panel) {
+      panel.hidden = false;
+      toggle.setAttribute('aria-expanded', 'true');
+      toggle.classList.add('is-open');
+    }
+  }
+});
 // Active nav on scroll (bonus)

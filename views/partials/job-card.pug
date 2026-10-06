@@ -1,31 +1,50 @@
 article.job-card
-  .job-card-header
-    
-    - const expired = new Date(job.deadline).getTime() < Date.now()
-    - const daysLeft = Math.ceil((new Date(job.deadline) - Date.now()) / 86400000)
-    if expired || job.status === 'closed'
-      span.badge.badge-closed
-        i.fas.fa-lock
-        | Closed
-    else if daysLeft <= 3
-      span.badge.badge-urgent
-        i.fas.fa-hourglass-half
-        | #{daysLeft === 0 ? 'Last day' : daysLeft + 'd left'}
-    else if job.featured
-      span.badge.badge-featured
-        i.fas.fa-star
-        | Featured
+  //- ------------------------------------------------------------
+  //- Deadline helpers
+  //- All time math runs on raw Dates (UTC internally). Display
+  //- strings go through appTime.format() so they're always in EAT.
+  //- ------------------------------------------------------------
+  - const deadlineDate = job.deadline ? new Date(job.deadline) : null
+  - const validDeadline = deadlineDate && !isNaN(deadlineDate.getTime())
+  - const now = Date.now()
+  - const expired = validDeadline ? deadlineDate.getTime() < now : false
+  - const msLeft = validDeadline ? deadlineDate.getTime() - now : 0
+  - const daysLeftExact = validDeadline ? Math.floor(msLeft / 86400000) : null
+  - const hoursLeft = validDeadline ? Math.floor(msLeft / 3600000) : null
+  - const isUrgent = validDeadline && !expired && daysLeftExact <= 3
 
-  .job-card-body
-    h3.job-title
-      a(href=`/jobs/${job.id}`)= job.title
+  //- Map job.refCategory → Font Awesome icon
+  - const categoryIcons = { ADM: 'fa-briefcase', ACA: 'fa-graduation-cap', SUP: 'fa-hands-helping', TEC: 'fa-laptop-code', INT: 'fa-building', GEN: 'fa-university' }
+  - const iconClass = categoryIcons[job.refCategory] || 'fa-university'
+
+  //- LEFT: logo / category icon
+  .job-card-logo
+    .company-logo(class=`logo-cat-${job.refCategory || 'GEN'}`)
+      i.fas(class=iconClass)
+
+  //- CENTER: main content
+  .job-card-main
+    .job-card-title-row
+      h3.job-title
+        a(href=`/jobs/${job.id}`)= job.title
+      if expired || job.status === 'closed'
+        span.badge.badge-closed
+          i.fas.fa-lock
+          | Closed
+      else if isUrgent
+        span.badge.badge-urgent
+          i.fas.fa-hourglass-half
+          | #{daysLeftExact === 0 ? 'Last day' : daysLeftExact + 'd left'}
+      else if job.featured
+        span.badge.badge-featured
+          i.fas.fa-star
+          | Featured
 
     p.job-company
       i.fas.fa-university
-      = job.department ? job.department.name : 'MUBS'
-
-    if job.jobRef
-      p.job-ref Ref: #{job.jobRef}
+      span.job-company-name= job.department ? job.department.name : 'MUBS'
+      if job.jobRef
+        span.job-ref-inline · Ref: #{job.jobRef}
 
     .job-meta
       span
@@ -37,21 +56,42 @@ article.job-card
       span
         i.fas.fa-map-marker-alt
         = job.location
+      span
+        i.fas.fa-calendar-plus
+        = 'Posted ' + formatDate(job.createdAt)
 
     .job-tags
       if job.grade
         span.tag Grade #{job.grade}
       span.tag= job.vacancies + ' position' + (job.vacancies > 1 ? 's' : '')
 
-  .job-card-footer
-    span.posted
-      i.fas.fa-calendar
-      = new Date(job.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+  //- RIGHT: deadline + CTA
+  .job-card-side
+    if validDeadline && !expired
+      .deadline-block(class=(isUrgent ? 'is-urgent' : ''))
+        .deadline-label
+          i.fas.fa-calendar-day
+          | Closes
+        .deadline-date= format(deadlineDate)
+        .deadline-remaining
+          if daysLeftExact >= 1
+            = daysLeftExact + ' day' + (daysLeftExact === 1 ? '' : 's') + ' left'
+          else if hoursLeft >= 1
+            = hoursLeft + ' hour' + (hoursLeft === 1 ? '' : 's') + ' left'
+          else
+            = 'Less than an hour left'
+    else if expired || job.status === 'closed'
+      .deadline-block.is-closed
+        .deadline-label
+          i.fas.fa-lock
+          | Closed
+        .deadline-date= deadlineDate ? formatDate(deadlineDate) : ''
 
-    //- Admin / poster sees application count
     if (typeof isAdmin !== 'undefined' && isAdmin)
-      span.application-count
+      .posted-line
         i.fas.fa-users
         = (job.applicationCount || 0) + ' application' + (parseInt(job.applicationCount) === 1 ? '' : 's')
 
-    a.btn.btn-sm.btn-primary(href=`/jobs/${job.id}`) View Details
+    a.btn.btn-primary.job-card-cta(href=`/jobs/${job.id}`)
+      | View Details
+      i.fas.fa-arrow-right

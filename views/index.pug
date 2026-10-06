@@ -39,7 +39,7 @@ block content
             h2.section-title Featured Vacancies
             p.section-subtitle Priority positions currently open at MUBS
           a.btn.btn-outline(href="/jobs") View All →
-        .jobs-grid
+        .jobs-list
           each job in featured
             include partials/job-card.pug
 
@@ -50,7 +50,7 @@ block content
           div
             h2.section-title Latest Opportunities
             p.section-subtitle Recently posted vacancies
-        .jobs-grid
+        .jobs-list
           each job in recent
             include partials/job-card.pug
 

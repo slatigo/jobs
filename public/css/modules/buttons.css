@@ -22,7 +22,10 @@
   transform: translateY(-1px);
   box-shadow: var(--shadow);
 }
-
+.btn.is-dim {
+  opacity: .55;
+  cursor: not-allowed;
+}
 .btn-outline {
   background: transparent;
   color: var(--primary);

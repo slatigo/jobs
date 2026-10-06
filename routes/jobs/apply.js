@@ -8,13 +8,29 @@ const { upload, handleUploadError } = require('../../middleware/upload');
 
 /* ================================================================== */
 /* POST /:id/apply — submit application with attachment                */
+/*                                                                     */
+/* Returns JSON:                                                       */
+/*   { ok: true,  redirect: '/jobs/:id' }                              */
+/*   { ok: false, message: '...', field?: 'attachment' }               */
+/*                                                                     */
+/* On file-upload errors (multer), the error middleware also returns   */
+/* JSON so the client can display it with SweetAlert.                  */
 /* ================================================================== */
 router.post(
   '/:id/apply',
   isAuthenticated,
   (req, res, next) => {
     upload.single('attachment')(req, res, (err) => {
-      if (err) return handleUploadError(err, req, res, next);
+      if (err) {
+        // Translate known multer errors into friendly messages
+        let message = 'Upload failed. Please try again.';
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          message = 'Attachment must be 10 MB or smaller.';
+        } else if (err.message && /file type|mime|extension/i.test(err.message)) {
+          message = 'Only PDF, DOC, or DOCX files are allowed.';
+        }
+        return res.status(400).json({ ok: false, message, field: 'attachment' });
+      }
       next();
     });
   },
@@ -22,19 +38,21 @@ router.post(
     const t = await sequelize.transaction();
     try {
       const job = await Job.findByPk(req.params.id, { transaction: t });
-      if (!job) throw new Error('Job not found');
+      if (!job) {
+        await t.rollback();
+        return res.status(404).json({ ok: false, message: 'Job not found.' });
+      }
 
       /* ---- Reject if job is closed ---- */
       if (isClosed(job)) {
         await t.rollback();
         const reason = closedReason(job);
-        req.flash(
-          'error',
-          reason === 'deadline-passed'
+        return res.status(400).json({
+          ok: false,
+          message: reason === 'deadline-passed'
             ? 'The application deadline for this job has passed.'
             : 'This job is no longer accepting applications.'
-        );
-        return res.redirect(`/jobs/${job.id}`);
+        });
       }
 
       /* ---- Prevent duplicate applications ---- */
@@ -45,32 +63,46 @@ router.post(
 
       if (existing) {
         await t.rollback();
-        req.flash('error', 'You have already applied to this job.');
-        return res.redirect(`/jobs/${job.id}`);
+        return res.status(400).json({
+          ok: false,
+          message: 'You have already applied to this job.'
+        });
       }
 
       /* ---- Validate required fields ---- */
       const { fullName, email, phone } = req.body;
 
-      if (!fullName || !fullName.trim()) {
+      if (!fullName || !fullName.trim() || fullName.trim().length < 3) {
         await t.rollback();
-        req.flash('error', 'Full name is required.');
-        return res.redirect(`/jobs/${job.id}`);
+        return res.status(400).json({
+          ok: false,
+          message: 'Full name is required (at least 3 characters).',
+          field: 'fullName'
+        });
       }
-      if (!email || !email.trim()) {
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
         await t.rollback();
-        req.flash('error', 'Email is required.');
-        return res.redirect(`/jobs/${job.id}`);
+        return res.status(400).json({
+          ok: false,
+          message: 'A valid email address is required.',
+          field: 'email'
+        });
       }
       if (!phone || !phone.trim()) {
         await t.rollback();
-        req.flash('error', 'Phone number is required.');
-        return res.redirect(`/jobs/${job.id}`);
+        return res.status(400).json({
+          ok: false,
+          message: 'Phone number is required.',
+          field: 'phone'
+        });
       }
       if (!req.file) {
         await t.rollback();
-        req.flash('error', 'Please attach the required document.');
-        return res.redirect(`/jobs/${job.id}`);
+        return res.status(400).json({
+          ok: false,
+          message: 'Please attach your CV or resume.',
+          field: 'attachment'
+        });
       }
 
       /* ---- Create application ---- */
@@ -81,7 +113,7 @@ router.post(
           fullName: fullName.trim(),
           email: email.trim(),
           phone: phone.trim(),
-          coverLetter: null,                 // ← no longer collected
+          coverLetter: null,
           attachmentUrl:  `/uploads/resumes/${req.file.filename}`,
           attachmentName: req.file.originalname,
           attachmentMime: req.file.mimetype,
@@ -102,13 +134,24 @@ router.post(
       });
 
       await t.commit();
-      req.flash('success', 'Application submitted successfully!');
-      res.redirect(`/jobs/${job.id}`);
+
+      return res.json({
+        ok: true,
+        message: 'Application submitted successfully!',
+        redirect: `/jobs/${job.id}`
+      });
     } catch (err) {
       await t.rollback();
       console.error('[JOBS APPLY]', err);
-      req.flash('error', 'Error submitting application: ' + err.message);
-      res.redirect(`/jobs/${req.params.id}`);
+
+      let message = 'Something went wrong. Please try again.';
+      if (err.name === 'SequelizeUniqueConstraintError') {
+        message = 'You have already applied to this job.';
+      } else if (err.name === 'SequelizeValidationError') {
+        message = 'Please check the information you entered.';
+      }
+
+      return res.status(500).json({ ok: false, message });
     }
   }
 );

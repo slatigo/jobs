@@ -77,7 +77,7 @@ router.post('/login', redirectIfAuthed, async (req, res) => {
         return fail('Login failed. Please try again.');
       }
       req.session.user = safeUser(user);
-      req.flash('success', `Welcome back, ${user.name.split(' ')[0]}!`);
+      req.flash('success', `Welcome back, ${user.name}!`);
       const target = returnTo && returnTo.startsWith('/') ? returnTo : '/';
       res.redirect(target);
     });
@@ -169,7 +169,7 @@ router.post('/register', redirectIfAuthed, async (req, res) => {
         return res.redirect('/auth/login');
       }
       req.session.user = safeUser(user);
-      req.flash('success', `Welcome, ${user.name.split(' ')[0]}!`);
+      req.flash('success', `Welcome, ${user.name}!`);
       const target = returnTo && returnTo.startsWith('/') ? returnTo : '/';
       res.redirect(target);
     });
@@ -369,7 +369,7 @@ router.get(
         email: u.email,
         role: u.role
       };
-      req.flash('success', `Welcome, ${u.name.split(' ')[0]}!`);
+      req.flash('success', `Welcome, ${u.name}!`);
       res.redirect('/');
     });
   }

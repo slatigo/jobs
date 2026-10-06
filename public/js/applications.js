@@ -7,6 +7,7 @@
 /*   - Reject-all-in-current-stage shortcut                             */
 /*   - Row drawer expansion                                             */
 /*   - Checkbox state                                                   */
+/*   - Stage menu popover (portalled, fixed-position)                   */
 /* ================================================================== */
 (function () {
   'use strict';
@@ -79,10 +80,6 @@
 
     /* -------------------------------------------------------------- */
     /* Bulk move — generic, target stage supplied by caller            */
-    /*   scope: 'selected' | 'all' | 'pending' | 'pending,reviewed'    */
-    /*   targetStage: any stage key from job_stages                    */
-    /*   targetLabel: display label for the modal                      */
-    /*   count: number of affected applications (for the modal)        */
     /* -------------------------------------------------------------- */
     window.bulkMove = function (scope, count, targetStage, targetLabel) {
       const jobId = getJobId();
@@ -107,14 +104,20 @@
 
     /* -------------------------------------------------------------- */
     /* Bulk move for selected rows                                     */
-    /* Reads the #bulkStageSelect dropdown                             */
     /* -------------------------------------------------------------- */
     window.bulkMoveSelected = function () {
       const ids = Array.from(document.querySelectorAll('.app-checkbox:checked'))
         .map((cb) => cb.value);
 
       if (ids.length === 0) {
-        /* Button is disabled, but guard anyway */
+        openConfirmModal({
+          title: 'No applications selected',
+          message: 'Tick at least one application before clicking Apply.',
+          confirmLabel: 'OK',
+          tone: 'warning',
+          showReason: false,
+          onConfirm: () => {}
+        });
         return;
       }
 
@@ -159,11 +162,10 @@
     };
 
     /* -------------------------------------------------------------- */
-    /* Checkbox state + row expansion                                  */
+    /* Checkbox state                                                  */
     /* -------------------------------------------------------------- */
     const selectAll       = document.getElementById('selectAll');
     const selectedCountEl = document.getElementById('selectedCount');
-    const rejectSelBtn    = document.getElementById('bulkRejectSelected'); // legacy
     const moveSelBtn      = document.getElementById('bulkMoveSelected');
     const checkboxes      = Array.from(document.querySelectorAll('.app-checkbox'));
 
@@ -177,13 +179,8 @@
       }
 
       if (moveSelBtn) {
-        moveSelBtn.disabled = n === 0;
-      }
-      if (rejectSelBtn) {
-        rejectSelBtn.disabled = n === 0;
-        rejectSelBtn.title = n === 0
-          ? 'Select at least one application first'
-          : `Reject ${n} selected application${n === 1 ? '' : 's'}`;
+        moveSelBtn.classList.toggle('is-dim', n === 0);
+        // don't touch .disabled — let clicks through so we can show the modal
       }
 
       if (selectAll) {
@@ -229,6 +226,117 @@
         if (e.target.closest('button, a, input, label, form')) return;
         toggleRowDrawer(row.dataset.appId);
       });
+    });
+
+    /* -------------------------------------------------------------- */
+    /* Stage menu popover — PORTALLED                                  */
+    /* The menu element lives outside the table (see applications.pug) */
+    /* and is positioned with position: fixed via JS.                  */
+    /* -------------------------------------------------------------- */
+    let openMenu = null;
+    let openTrigger = null;
+
+    function closeOpenMenu() {
+      if (!openMenu) return;
+      openMenu.hidden = true;
+      if (openTrigger) openTrigger.setAttribute('aria-expanded', 'false');
+      openMenu = null;
+      openTrigger = null;
+    }
+
+    function positionMenu(menuEl, triggerEl) {
+      const tRect = triggerEl.getBoundingClientRect();
+      const mRect = menuEl.getBoundingClientRect();
+
+      /* Default: below the trigger, aligned to its left edge */
+      let top  = tRect.bottom + 6;
+      let left = tRect.left;
+
+      /* Flip above if it would overflow the bottom of the viewport */
+      if (top + mRect.height > window.innerHeight - 8) {
+        top = tRect.top - mRect.height - 6;
+      }
+
+      /* Flip to right-aligned if it would overflow the right edge */
+      if (left + mRect.width > window.innerWidth - 8) {
+        left = tRect.right - mRect.width;
+      }
+
+      /* Clamp inside the viewport */
+      if (left < 8) left = 8;
+      if (top  < 8) top  = 8;
+
+      menuEl.style.top  = top  + 'px';
+      menuEl.style.left = left + 'px';
+    }
+
+    function openStageMenu(appId, menuEl, triggerEl) {
+      closeOpenMenu();
+
+      /* Unhide FIRST so getBoundingClientRect returns real dimensions */
+      menuEl.hidden = false;
+      menuEl.dataset.forApp = appId;
+
+      positionMenu(menuEl, triggerEl);
+
+      triggerEl.setAttribute('aria-expanded', 'true');
+      openMenu = menuEl;
+      openTrigger = triggerEl;
+
+      /* Focus first enabled item for keyboard users */
+      const first = menuEl.querySelector('.stage-menu-item:not(:disabled)');
+      if (first) first.focus();
+    }
+
+    document.querySelectorAll('[data-stage-menu]').forEach((trigger) => {
+      trigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const appId = trigger.dataset.stageMenu;
+        const menu = document.getElementById(`stage-menu-${appId}`);
+        if (!menu) return;
+
+        if (openMenu === menu) {
+          closeOpenMenu();
+        } else {
+          openStageMenu(appId, menu, trigger);
+        }
+      });
+    });
+
+    /* Item click → fire changeStatus */
+    document.querySelectorAll('.stage-menu-item[data-target-key]').forEach((item) => {
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const appId    = item.dataset.appId;
+        const key      = item.dataset.targetKey;
+        const label    = item.dataset.targetLabel;
+        const appName  = item.dataset.appName;
+        closeOpenMenu();
+        window.changeStatus(appId, key, appName, label);
+      });
+    });
+
+    /* Close on outside click */
+    document.addEventListener('click', (e) => {
+      if (!openMenu) return;
+      if (e.target.closest('.stage-menu-portal') || e.target.closest('[data-stage-menu]')) return;
+      closeOpenMenu();
+    });
+
+    /* Close on Escape */
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeOpenMenu();
+    });
+
+    /* Reposition on scroll (fixed positioning means the menu must follow
+       the trigger; closing here would be jarring). */
+    window.addEventListener('scroll', () => {
+      if (openMenu && openTrigger) positionMenu(openMenu, openTrigger);
+    }, { passive: true, capture: true });
+
+    /* Reposition on resize */
+    window.addEventListener('resize', () => {
+      if (openMenu && openTrigger) positionMenu(openMenu, openTrigger);
     });
 
   });

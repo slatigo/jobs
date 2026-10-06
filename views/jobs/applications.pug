@@ -86,7 +86,6 @@ block content
               button.btn.btn-sm.btn-primary(
                 type="button"
                 id="bulkMoveSelected"
-                disabled
                 onclick="bulkMoveSelected()"
               )
                 i.fas.fa-arrow-right
@@ -143,11 +142,19 @@ block content
                       a(href=`tel:${a.phone}`)= a.phone
 
                   td.th-hide-md
-                    - const appliedAt = new Date(a.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-                    = appliedAt
+                    = appTime.formatDate(a.createdAt)
 
                   td
-                    span.pill(class=`pill-${stageColor}`)= stageLabel
+                    button.pill.pill-btn(
+                      type="button"
+                      class=`pill-${stageColor}`
+                      data-stage-menu=a.id
+                      aria-haspopup="true"
+                      aria-expanded="false"
+                      title="Change stage"
+                    )
+                      = stageLabel
+                      i.fas.fa-chevron-down.pill-caret
 
                   td.th-hide-md
                     if a.attachmentUrl
@@ -163,36 +170,7 @@ block content
 
                   td.td-actions
                     .quick-actions
-                      //- Render a button for every stage except the current one.
-                      //- Icons: accept → check, reject → times, others → arrow.
-                      each target in stages
-                        if target.key !== a.status
-                          -
-                            const isAccept = target.key === 'accepted'
-                            const isReject = target.key === 'rejected'
-                            const btnClass = isAccept
-                              ? 'icon-btn-success'
-                              : (isReject ? 'icon-btn-danger' : (target.color === 'primary' ? 'icon-btn-info' : ''))
-                            const btnTitle = isAccept
-                              ? 'Accept'
-                              : (isReject ? 'Reject' : `Move to ${target.label}`)
-                            const safeName  = a.fullName.replace(/'/g, "\\'")
-                            const safeLabel = target.label.replace(/'/g, "\\'")
-
-                          button.icon-btn(
-                            class=btnClass
-                            type="button"
-                            title=btnTitle
-                            onclick=`changeStatus(${a.id}, '${target.key}', '${safeName}', '${safeLabel}')`
-                          )
-                            if isAccept
-                              i.fas.fa-check
-                            else if isReject
-                              i.fas.fa-times
-                            else
-                              i.fas.fa-arrow-right
-
-                      //- Expand drawer
+                      //- The expand drawer toggle stays — it's unrelated to stage changes
                       button.icon-btn.icon-btn-toggle(
                         type="button"
                         title="Show details"
@@ -236,10 +214,9 @@ block content
                                   span
                                     i.fas.fa-user
                                     = h.changedBy ? h.changedBy.name : 'System'
-                                  - const changedAt = new Date(h.createdAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
                                   span
                                     i.fas.fa-clock
-                                    = changedAt
+                                    = appTime.format(h.createdAt)
                                   if h.source && h.source !== 'single'
                                     span.history-source
                                       i.fas.fa-layer-group
@@ -247,6 +224,38 @@ block content
 
                                 if h.reason
                                   .history-reason= h.reason
+
+        //- ==============================================================
+        //- PORTALLED STAGE MENUS
+        //- Rendered OUTSIDE the table so they escape the .app-table-wrap
+        //- clipping / stacking context. JS positions them via getBoundingClientRect.
+        //- ==============================================================
+        each a in applications
+          .stage-menu-portal(
+            id=`stage-menu-${a.id}`
+            role="menu"
+            hidden
+          )
+            each target in stages
+              if target.key === a.status
+                button.stage-menu-item.is-current(
+                  type="button"
+                  disabled
+                )
+                  span.stage-dot(class=`dot-${target.color}`)
+                  span.stage-menu-label= target.label
+                  i.fas.fa-check
+              else
+                button.stage-menu-item(
+                  type="button"
+                  role="menuitem"
+                  data-app-id=a.id
+                  data-target-key=target.key
+                  data-target-label=target.label
+                  data-app-name=a.fullName
+                )
+                  span.stage-dot(class=`dot-${target.color}`)
+                  span.stage-menu-label= target.label
 
       else
         .empty-state

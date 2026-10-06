@@ -84,7 +84,10 @@ app.use(passport.session());
 /* ------------------------------------------------------------------ */
 /* Global view locals                                                  */
 /* ------------------------------------------------------------------ */
+const appTime = require('./utils/appTime');
+
 app.use((req, res, next) => {
+  // User & flash
   res.locals.user = req.session.user || null;
   res.locals.success = req.flash('success');
   res.locals.error = req.flash('error');
@@ -95,6 +98,18 @@ app.use((req, res, next) => {
   res.locals.formEmail   = req.flash('formEmail');
   res.locals.formRole    = req.flash('formRole');
   res.locals.formPhone   = req.flash('formPhone');
+
+  // Time helpers — available in every Pug template as `appTime.*`
+  // e.g. appTime.format(date), appTime.formatDate(date), appTime.formatRelative(date)
+  res.locals.appTime = appTime;
+  // Also expose the individual helpers at the top level so templates
+  // can call `format(date)` / `formatDate(date)` without the prefix.
+  res.locals.format = appTime.format;
+  res.locals.formatDate = appTime.formatDate;
+  res.locals.formatTime = appTime.formatTime;
+  res.locals.formatRelative = appTime.formatRelative;
+  res.locals.fromInput = appTime.fromInput;
+  res.locals.toInput = appTime.toInput;
 
   next();
 });
@@ -109,6 +124,7 @@ app.use('/admin',       require('./routes/admin'));
 app.use('/departments', require('./routes/departments'));
 app.use('/files',       require('./routes/files'));
 app.use('/j', require('./routes/jobs/share'));
+
 /* ------------------------------------------------------------------ */
 /* 404 handler                                                         */
 /* ------------------------------------------------------------------ */

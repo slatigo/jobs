@@ -6,14 +6,8 @@ const ApplicationStatusHistory = sequelize.define('ApplicationStatusHistory', {
 
   applicationId: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false },
 
-  fromStatus: {
-    type: DataTypes.ENUM('pending', 'reviewed', 'shortlisted', 'rejected', 'accepted'),
-    allowNull: true         // null on first insert (initial state)
-  },
-  toStatus: {
-    type: DataTypes.ENUM('pending', 'reviewed', 'shortlisted', 'rejected', 'accepted'),
-    allowNull: false
-  },
+  fromStatus: { type: DataTypes.STRING(60), allowNull: true },
+  toStatus:   { type: DataTypes.STRING(60), allowNull: false },
 
   changedByUserId: {
     type: DataTypes.INTEGER.UNSIGNED,

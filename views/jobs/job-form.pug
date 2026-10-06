@@ -5,7 +5,7 @@ block head
 
 block content
   //- ============================================================
-  //- Mode detection & shared values (all single-line, no multi-line ternaries)
+  //- Mode detection & shared values
   //- ============================================================
   - const isEdit = typeof job !== 'undefined' && job !== null
   - const formAction = isEdit ? `/jobs/${job.id}/edit` : '/jobs'
@@ -24,8 +24,18 @@ block content
   -   return form[key] != null ? form[key] : fallback;
   - }
 
-  //- Deadline value, precomputed to avoid a ternary in the template body
-  - const deadlineVal = isEdit && job.deadline ? new Date(job.deadline).toISOString().slice(0, 10) : v('deadline')
+  //- ------------------------------------------------------------
+  //- Deadline value for <input type="datetime-local">
+  //- Edit mode: controller passes `deadlineInputValue` — already
+  //-   formatted in Kampala time via utils/appTime.toInput().
+  //- Create mode: use the flash value (already in local input format).
+  //- No timezone math here. The controller owns that.
+  //- ------------------------------------------------------------
+  - const deadlineVal = (() => {
+  -   if (isEdit) return typeof deadlineInputValue !== 'undefined' ? deadlineInputValue : '';
+  -   const raw = v('deadline');
+  -   return raw ? String(raw).slice(0, 16) : '';
+  - })()
 
   //- Stages initial JSON (create mode only)
   - const stagesInitial = isEdit ? '[]' : (form.stages || '[]')
@@ -160,11 +170,12 @@ block content
                 .form-group
                   label Application Deadline *
                   input(
-                    type="date"
+                    type="datetime-local"
                     name="deadline"
                     required
                     value=deadlineVal
                   )
+                  small.text-muted Kampala time (EAT). Applications close at this exact moment.
                 .form-group
                   label Contact Email *
                   input(

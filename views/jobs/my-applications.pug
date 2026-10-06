@@ -1,0 +1,58 @@
+extends ../layout
+
+block content
+  section.page-header
+    .container
+      h1 My Applications
+      p
+        = applications.length
+        |  application#{applications.length === 1 ? '' : 's'}
+
+  section.applications-page
+    .container
+
+      if applications && applications.length
+        .app-table-wrap
+          table.app-table
+            thead
+              tr
+                th Position
+                th.th-hide-sm Department
+                th.th-hide-md Applied
+                th Status
+                th.th-actions
+
+            tbody
+              each a in applications
+                tr.app-row
+                  td.td-applicant
+                    .applicant-cell
+                      .applicant-avatar-sm= (a.job && a.job.title ? a.job.title.charAt(0).toUpperCase() : 'J')
+                      div
+                        strong
+                          a(href=`/jobs/${a.jobId}`)= a.job ? a.job.title : 'Job'
+                        if a.job && a.job.jobRef
+                          span.job-ref-inline Ref: #{a.job.jobRef}
+
+                  td.th-hide-sm
+                    = a.job && a.job.department ? a.job.department.name : '—'
+
+                  td.th-hide-md
+                    = appTime.formatDate(a.createdAt)
+
+                  td
+                    span.pill(class=`pill-${a.stageColor}`)= a.stageLabel
+
+                  td.td-actions
+                    a.icon-btn.icon-btn-toggle(
+                      href=`/jobs/${a.jobId}`
+                      title="View job"
+                    )
+                      i.fas.fa-eye
+
+      else
+        .empty-state
+          i.fas.fa-inbox
+          h3 No applications yet
+          p You haven't applied to any positions.
+          a.btn.btn-primary(href="/jobs") Browse Jobs

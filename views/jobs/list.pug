@@ -9,13 +9,9 @@ block content
   section.jobs-list
     .container
 
-      //- ============================================================
-      //- FILTER BAR (top of page)
-      //- ============================================================
       form.filter-bar(action="/jobs" method="GET")
         .filter-bar-row
-
-          //- Search (takes the widest slot)
+          //- Search always visible
           .filter-field.filter-field-search
             i.fas.fa-search
             input(
@@ -26,63 +22,70 @@ block content
               autocomplete="off"
             )
 
-          //- Department (admin-only)
-          if isAdmin
+          //- Toggle button — only visible when there are hidden filters
+          button.filter-toggle(
+            type="button"
+            aria-expanded="false"
+            aria-controls="filter-extra"
+          )
+            i.fas.fa-sliders-h
+            span Filters
+
+        //- Collapsible block — hidden by default
+        #filter-extra.filter-bar-extra(hidden)
+          .filter-bar-row
+            if isAdmin
+              .filter-field
+                i.fas.fa-university
+                select(name="department")
+                  option(value="All") All Departments
+                  each d in departments
+                    option(value=d.slug selected=filters.department === d.slug)= d.name
+
             .filter-field
-              i.fas.fa-university
-              select(name="department")
-                option(value="All") All Departments
-                each d in departments
-                  option(value=d.slug selected=filters.department === d.slug)= d.name
+              i.fas.fa-clock
+              select(name="type")
+                option(value="All") All Types
+                each t in JOB_TYPES
+                  option(value=t selected=filters.type === t)= t
 
-          //- Job Type
-          .filter-field
-            i.fas.fa-clock
-            select(name="type")
-              option(value="All") All Types
-              each t in JOB_TYPES
-                option(value=t selected=filters.type === t)= t
-
-          //- Contract Terms
-          .filter-field
-            i.fas.fa-file-contract
-            select(name="terms")
-              option(value="All") All Terms
-              each c in CONTRACT_TERMS
-                option(value=c selected=filters.terms === c)= c
-
-          //- Location
-          .filter-field
-            i.fas.fa-map-marker-alt
-            input(
-              type="text"
-              name="location"
-              value=filters.location
-              placeholder="Location"
-            )
-
-          //- Status (admin-only)
-          if isAdmin
             .filter-field
-              i.fas.fa-archive
-              select(name="status")
-                option(value="active" selected=filters.status === 'active') Active
-                option(value="closed" selected=filters.status === 'closed') Closed
-                option(value="all"    selected=filters.status === 'all')    All
+              i.fas.fa-file-contract
+              select(name="terms")
+                option(value="All") All Terms
+                each c in CONTRACT_TERMS
+                  option(value=c selected=filters.terms === c)= c
 
-        .filter-bar-actions
-          a.btn.btn-ghost(href="/jobs")
-            i.fas.fa-times
-            | Clear
-          button.btn.btn-primary(type="submit")
-            i.fas.fa-filter
-            | Apply Filters
+            .filter-field
+              i.fas.fa-map-marker-alt
+              input(
+                type="text"
+                name="location"
+                value=filters.location
+                placeholder="Location"
+              )
+
+            if isAdmin
+              .filter-field
+                i.fas.fa-archive
+                select(name="status")
+                  option(value="active" selected=filters.status === 'active') Active
+                  option(value="closed" selected=filters.status === 'closed') Closed
+                  option(value="all"    selected=filters.status === 'all')    All
+
+          .filter-bar-actions
+            a.btn.btn-ghost(href="/jobs")
+              i.fas.fa-times
+              | Clear
+            button.btn.btn-primary(type="submit")
+              i.fas.fa-filter
+              | Apply Filters
 
       //- ============================================================
-      //- RESULTS
+      //- RESULTS — one job per row
       //- ============================================================
       if jobs.length
-        .jobs-grid.jobs-grid-3
+        .jobs-list
           each job in jobs
             include ../partials/job-card.pug
 

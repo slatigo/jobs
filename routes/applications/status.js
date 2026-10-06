@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router({ mergeParams: true });
-const { Job, Application, sequelize } = require('../../models');
+const { Job, Application, JobStage, sequelize } = require('../../models');
 const { isAuthenticated } = require('../../middleware/auth');
 const { logStatusChange } = require('../../utils/logStatusChange');
 
@@ -11,16 +11,21 @@ router.post('/:appId/status', isAuthenticated, async (req, res) => {
   try {
     const { status, reason } = req.body;
 
-    const ALLOWED = ['pending', 'reviewed', 'shortlisted', 'rejected', 'accepted'];
-    if (!ALLOWED.includes(status)) {
-      req.flash('error', 'Invalid status.');
-      return res.redirect(`/jobs/${req.params.id}/applications`);
-    }
-
     const job = await Job.findByPk(req.params.id);
     if (!job) {
       req.flash('error', 'Job not found');
       return res.redirect('/jobs');
+    }
+
+    /* ---- Validate status against THIS job's stages ---- */
+    const stageRows = await JobStage.findAll({ where: { jobId: job.id } });
+    const validKeys = stageRows.length
+      ? stageRows.map((s) => s.key)
+      : Job.DEFAULT_STAGES.map((s) => s.key);
+
+    if (!validKeys.includes(status)) {
+      req.flash('error', 'Invalid status.');
+      return res.redirect(`/jobs/${job.id}/applications`);
     }
 
     const isPoster = req.session.user.id === job.userId;

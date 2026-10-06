@@ -24,6 +24,31 @@
 }
 
 /* ==================================================================
+   HOMEPAGE SECTIONS — vertical rhythm
+   ------------------------------------------------------------------
+   Defined globally (not just inside a media query) so desktop gets
+   predictable spacing. The `.hero + section` rules tuck the first
+   section closer to the hero so the padding doesn't double up.
+   ================================================================== */
+section.categories,
+section.featured-jobs,
+section.recent-jobs,
+section.jobs-list,
+section.form-section {
+  padding: 60px 0;
+}
+
+.hero + section.featured-jobs,
+.hero + section.recent-jobs {
+  padding-top: 40px;
+}
+
+/* Trim the gap between stacked homepage sections */
+section.featured-jobs + section.recent-jobs {
+  padding-top: 0;
+}
+
+/* ==================================================================
    RESPONSIVE
    ================================================================== */
 @media (max-width: 1024px) {
@@ -81,7 +106,11 @@
   section.recent-jobs,
   section.jobs-list,
   section.form-section {
-    padding: 50px 0;
+    padding: 40px 0;
+  }
+  .hero + section.featured-jobs,
+  .hero + section.recent-jobs {
+    padding-top: 28px;
   }
   .section-title { font-size: 24px; }
 

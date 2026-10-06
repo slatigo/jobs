@@ -7,7 +7,10 @@ block content
         .job-main
           .job-header-card
             .job-header-top
-              .company-logo-lg= job.department ? job.department.name.charAt(0).toUpperCase() : 'J'
+              - const categoryIcons = { ADM: 'fa-briefcase', ACA: 'fa-graduation-cap', SUP: 'fa-hands-helping', TEC: 'fa-laptop-code', INT: 'fa-building', GEN: 'fa-university' }
+              - const iconClass = categoryIcons[job.refCategory] || 'fa-university'
+              .company-logo-lg(class=`logo-cat-${job.refCategory || 'GEN'}`)
+                i.fas(class=iconClass)
               .job-header-info
                 h1= job.title
                 p.company-name
@@ -44,7 +47,7 @@ block content
                 i.fas.fa-calendar-times
                 div
                   span Deadline
-                  strong= new Date(job.deadline).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+                  strong= appTime.format(job.deadline)
               .info-item
                 i.fas.fa-eye
                 div
@@ -78,8 +81,8 @@ block content
                   i.fas.fa-edit
                   |  Edit Job
                 a.btn.btn-outline.btn-block(href=`/jobs/${job.id}/stages`)
-                       i.fas.fa-layer-group
-                       |  Manage Stages
+                  i.fas.fa-layer-group
+                  |  Manage Stages
 
                 if job.status === 'active'
                   form(action=`/jobs/${job.id}/close` method="POST" data-confirm="Close this job? Applicants will no longer be able to apply." data-confirm-title="Close Job" data-confirm-label="Close Job" data-confirm-tone="warning")
@@ -110,7 +113,7 @@ block content
                   p You have already applied to this vacancy.
 
               else if user
-                form(action=`/jobs/${job.id}/apply` method="POST" enctype="multipart/form-data")
+                form.apply-form(action=`/jobs/${job.id}/apply` method="POST" enctype="multipart/form-data" novalidate)
                   .form-group
                     label Full Name
                     input(type="text" name="fullName" value=user.name required)
@@ -132,14 +135,15 @@ block content
                   .form-group
                     label Attachment *
                     small.text-muted Required document — PDF, DOC or DOCX. Max 10 MB.
-                    input(
+                    input#attachmentInput(
                       type="file"
                       name="attachment"
                       accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                       required
                     )
+                    .file-preview#filePreview
 
-                  button.btn.btn-primary.btn-block(type="submit")
+                  button.btn.btn-primary.btn-block.apply-submit(type="submit")
                     i.fas.fa-paper-plane
                     |  Submit Application
 
@@ -175,7 +179,6 @@ block content
               |  Share this Vacancy
 
             if job.shortCode
-             
               .share-link
                 input.share-link-input(
                   type="text"
@@ -192,7 +195,6 @@ block content
                   i.fas.fa-copy
                   span Copy
             else
-
               .share-link
                 input.share-link-input(
                   type="text"
@@ -208,3 +210,136 @@ block content
                 )
                   i.fas.fa-copy
                   span Copy
+
+block scripts
+  script.
+    document.addEventListener('DOMContentLoaded', () => {
+      const form = document.querySelector('.apply-form');
+      if (!form) return;
+
+      const submitBtn    = form.querySelector('.apply-submit');
+      const originalHTML = submitBtn ? submitBtn.innerHTML : '';
+      const fileInput    = document.getElementById('attachmentInput');
+      const filePreview  = document.getElementById('filePreview');
+
+      /* --------------------------------------------------------------
+         File preview — filename + size on pick
+         -------------------------------------------------------------- */
+      if (fileInput && filePreview) {
+        fileInput.addEventListener('change', () => {
+          const f = fileInput.files && fileInput.files[0];
+          if (!f) {
+            filePreview.classList.remove('visible', 'warn');
+            filePreview.textContent = '';
+            return;
+          }
+          const sizeMB = f.size / (1024 * 1024);
+          const sizeText = sizeMB < 1
+            ? Math.round(f.size / 1024) + ' KB'
+            : sizeMB.toFixed(1) + ' MB';
+
+          filePreview.classList.add('visible');
+          filePreview.classList.toggle('warn', sizeMB > 10);
+          filePreview.innerHTML =
+            '<i class="fas ' + (sizeMB > 10 ? 'fa-exclamation-triangle' : 'fa-file-alt') + '"></i>' +
+            '<span class="file-name">' + f.name + '</span>' +
+            '<span class="file-size">(' + sizeText + ')</span>' +
+            (sizeMB > 10 ? '<span class="file-size"> — exceeds 10 MB</span>' : '');
+        });
+      }
+
+      /* --------------------------------------------------------------
+         Restore UI on failure
+         -------------------------------------------------------------- */
+      function restore() {
+        if (!submitBtn) return;
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalHTML;
+        form.querySelectorAll('input, select, textarea').forEach((el) => {
+          el.readOnly = false;
+        });
+      }
+
+      /* --------------------------------------------------------------
+         Submit — client validation → AJAX → SweetAlert
+         -------------------------------------------------------------- */
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const fullName = form.querySelector('[name="fullName"]').value.trim();
+        const email    = form.querySelector('[name="email"]').value.trim();
+        const phone    = form.querySelector('[name="phone"]').value.trim();
+        const file     = fileInput && fileInput.files ? fileInput.files[0] : null;
+
+        const errors = [];
+        if (fullName.length < 3) errors.push('Please enter your full name.');
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push('Please enter a valid email address.');
+        if (!phone) errors.push('Phone number is required.');
+        if (!file) errors.push('Please attach your CV or resume.');
+        else if (file.size > 10 * 1024 * 1024) errors.push('Attachment must be 10 MB or smaller.');
+
+        if (errors.length) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Please check the form',
+            html: '<ul style="text-align:left;margin:0;padding-left:18px;">'
+              + errors.map((m) => '<li>' + m + '</li>').join('')
+              + '</ul>',
+            confirmButtonText: 'OK'
+          });
+          return;
+        }
+
+        /* Lock UI */
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting…';
+        form.querySelectorAll('input, select, textarea').forEach((el) => {
+          el.readOnly = true;
+        });
+
+        try {
+          const fd = new FormData(form);
+          const res = await fetch(form.action, {
+            method: 'POST',
+            body: fd,
+            headers: { 'Accept': 'application/json' },
+            credentials: 'same-origin'
+          });
+
+          const data = await res.json().catch(() => ({
+            ok: false,
+            message: 'Server returned an unexpected response.'
+          }));
+
+          if (res.ok && data.ok) {
+            await Swal.fire({
+              icon: 'success',
+              title: 'Application Submitted',
+              text: data.message || 'Your application has been submitted.',
+              confirmButtonText: 'Continue',
+              allowOutsideClick: false
+            });
+            window.location.href = data.redirect || window.location.pathname;
+            return;
+          }
+
+          Swal.fire({
+            icon: 'error',
+            title: 'Could not submit',
+            text: data.message || 'Please try again.'
+          });
+          restore();
+        } catch (err) {
+          console.error('[APPLY AJAX]', err);
+          Swal.fire({
+            icon: 'error',
+            title: 'Network error',
+            text: 'Could not reach the server. Please check your connection and try again.'
+          });
+          restore();
+        }
+      });
+
+      /* Restore state if user navigates back */
+      window.addEventListener('pageshow', restore);
+    });

@@ -15,9 +15,10 @@ const Application = sequelize.define('Application', {
   attachmentName: { type: DataTypes.STRING(255), allowNull: false }, // original filename
   attachmentMime: { type: DataTypes.STRING(100), allowNull: false },
   attachmentSize: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false }, // bytes
-
+  
   status: {
-    type: DataTypes.ENUM('pending', 'reviewed', 'shortlisted', 'rejected', 'accepted'),
+    type: DataTypes.STRING(60),
+    allowNull: false,
     defaultValue: 'pending'
   }
 }, {
