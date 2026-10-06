@@ -28,8 +28,10 @@ router.use('/', require('./create'));
 /* Manage a specific job's workflow stages */
 router.use('/:id/stages', require('./stages'));
 
-/* Applications for a specific job — /jobs/:id/applications */
-router.use('/:id/applications', require('./apply'));
+/* Applications for a specific job — /jobs/:id/applications
+   `../applications` points at routes/applications.js, the aggregator
+   that mounts routes/applications/{list,bulk,status}.js */
+router.use('/:id/applications', require('../applications'));
 
 /* Detail, edit, apply, manage (all use /:id or /:id/...) */
 router.use('/', require('./detail'));

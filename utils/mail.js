@@ -150,5 +150,49 @@ async function sendPasswordResetEmail({ to, name, resetUrl }) {
     html: shell('Reset Password', body)
   });
 }
+/* ------------------------------------------------------------------
+   Application received — sent to the applicant on successful submit
+   ------------------------------------------------------------------ */
+async function sendApplicationReceivedEmail({
+  to,
+  name,
+  jobTitle,
+  jobRef,
+  departmentName,
+  appliedAt,
+  jobUrl
+}) {
+  const subject = `Application received — ${jobTitle}`;
 
-module.exports = { sendWelcomeEmail, sendStatusChangeEmail, sendPasswordResetEmail };
+  const body = `
+    <p>Hi <strong>${name}</strong>,</p>
+
+    <p>Thank you for applying for <strong>${jobTitle}</strong> at Makerere University Business School. We've received your application and it's now under consideration.</p>
+
+    <p style="margin:16px 0;padding:16px;background:#f1f5f9;border-radius:8px;color:#334155;font-size:14px;">
+      <strong style="display:block;margin-bottom:6px;color:#1e293b;">Application details</strong>
+      Position: <strong>${jobTitle}</strong><br>
+      ${departmentName ? `Department: ${departmentName}<br>` : ''}
+      ${jobRef ? `Reference: <span style="font-family:ui-monospace,monospace;">${jobRef}</span><br>` : ''}
+      Applied on: ${appliedAt}
+    </p>
+
+    <p>You can track the status of your application anytime from your dashboard:</p>
+
+    <p style="margin:24px 0;">
+      <a href="${jobUrl}" style="display:inline-block;background:#1e40af;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;">View My Applications</a>
+    </p>
+
+    <p style="color:#64748b;font-size:13px;">
+      The recruitment team will be in touch if your application progresses. Please don't reply to this email directly — use the contact details listed on the job posting if you have questions.
+    </p>
+  `;
+
+  return transporter.sendMail({
+    from: fromAddress,
+    to,
+    subject,
+    html: shell(subject, body)
+  });
+}
+module.exports = { sendWelcomeEmail, sendStatusChangeEmail, sendPasswordResetEmail, sendApplicationReceivedEmail };

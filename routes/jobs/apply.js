@@ -5,7 +5,8 @@ const { isAuthenticated } = require('../../middleware/auth');
 const { isClosed, closedReason } = require('../../utils/jobStatus');
 const { logStatusChange } = require('../../utils/logStatusChange');
 const { upload, handleUploadError } = require('../../middleware/upload');
-
+const { sendApplicationReceivedEmail } = require('../../utils/mail');
+const { format: formatEAT } = require('../../utils/appTime');
 /* ================================================================== */
 /* POST /:id/apply — submit application with attachment                */
 /*                                                                     */
@@ -134,10 +135,20 @@ router.post(
       });
 
       await t.commit();
-
+      sendApplicationReceivedEmail({
+        to: req.session.user.email,               // or email from the form — see note below
+        name: fullName.trim(),
+        jobTitle: job.title,
+        jobRef: job.jobRef || null,
+        departmentName: job.department ? job.department.name : null,
+        appliedAt: formatEAT(application.createdAt),
+        jobUrl: `${process.env.APP_URL || 'http://localhost:3000'}/jobs/my-applications`
+      }).catch((err) => {
+        console.error('[APPLY EMAIL]', err.message);
+      });
       return res.json({
         ok: true,
-        message: 'Application submitted successfully!',
+        message: 'Application submitted successfully! You can track its status under My Applications.',
         redirect: `/jobs/${job.id}`
       });
     } catch (err) {
