@@ -166,5 +166,29 @@ router.post(
     }
   }
 );
+router.post('/:id/withdraw', isAuthenticated, async (req, res) => {
+  try {
+    const job = await Job.findByPk(req.params.id);
+    if (!job) return res.redirect('/jobs');
 
+    // BLOCK withdrawal if the job deadline has passed
+    if (isClosed(job)) {
+      // You can use req.flash('error', '...') here if you have flash configured
+      return res.redirect(`/jobs/${req.params.id}`);
+    }
+
+    const application = await Application.findOne({
+      where: { jobId: req.params.id, userId: req.session.user.id }
+    });
+
+    if (application) {
+      await application.destroy();
+    }
+
+    return res.redirect(`/jobs/${req.params.id}`);
+  } catch (err) {
+    console.error('[WITHDRAW ERROR]', err);
+    return res.redirect(`/jobs/${req.params.id}`);
+  }
+});
 module.exports = router;

@@ -111,6 +111,16 @@ block content
                 .applied-notice
                   i.fas.fa-check-circle
                   p You have already applied to this vacancy.
+                  
+                  //- Only show the withdraw button if the job is still open
+                  if job.status === 'active' && new Date(job.deadline) > new Date()
+                    form(action=`/jobs/${job.id}/withdraw` method="POST" style="margin-top: 15px;" data-confirm="Are you sure you want to withdraw? You will need to re-upload your documents to apply again.")
+                      button.btn.btn-danger.btn-sm(type="submit")
+                        i.fas.fa-undo
+                        |  Withdraw Application
+                  else
+                    p.text-muted(style="font-size: 0.85em; margin-top: 10px;")
+                      | The deadline has passed. You can no longer withdraw or edit this application.
 
               else if user
                 form.apply-form(action=`/jobs/${job.id}/apply` method="POST" enctype="multipart/form-data" novalidate)
