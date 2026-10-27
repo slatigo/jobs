@@ -67,16 +67,20 @@ block content
                     
                     span(class=`badge ${roleBadgeClass}` style="font-size: 0.7em; text-transform: uppercase; padding: 3px 6px;")= u.role
 
-                    //- 2. ONLY SHOW APPLICATION COUNT IF APPLICANT
+                    //- ONLY SHOW APPLICATION COUNT IF APPLICANT
                     if u.role === 'applicant'
-                      if u.applicationCount > 0
+                      //- Parse the count string from Sequelize into a real number
+                      - const appCount = parseInt(u.applicationCount) || 0;
+                      
+                      //- Check the parsed number, not the raw string
+                      if appCount > 0
                         a.badge.badge-success(
                           href=`/applications?userId=${u.id}` 
                           style="font-size: 0.75em; text-decoration: none; padding: 3px 6px;" 
                           title="View Applications"
                         )
                           i.fas.fa-file-alt(style="margin-right: 4px;")
-                          | #{u.applicationCount} Application#{u.applicationCount > 1 ? 's' : ''}
+                          | #{appCount} Application#{appCount > 1 ? 's' : ''}
                       else
                         span.badge(
                           style="background-color: #e2e8f0; color: #64748b; font-size: 0.75em; padding: 3px 6px; border-radius: 4px;" 
