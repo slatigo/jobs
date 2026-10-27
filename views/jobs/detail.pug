@@ -108,17 +108,18 @@ block content
               h3 Apply for this Position
 
               if alreadyApplied
-                //- We use a simple block layout here with explicit width
-                .applied-notice(style="display: block; padding: 15px; margin-bottom: 15px;")
-                  div(style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;")
-                    i.fas.fa-check-circle(style="color: #28a745; font-size: 1.2rem;")
-                    p(style="margin: 0; font-weight: 500;") You have already applied to this vacancy.
+                //- Simple block layout with flex-wrap to prevent the overlap
+                .applied-notice(style="display: flex; flex-direction: column; gap: 15px; padding: 15px; margin-bottom: 15px; background-color: #d4edda; border: 1px solid #c3e6cb; border-radius: 8px;")
+                  
+                  div(style="display: flex; align-items: flex-start; gap: 10px;")
+                    i.fas.fa-check-circle(style="color: #28a745; font-size: 1.2rem; margin-top: 3px;")
+                    p(style="margin: 0; font-weight: 500; line-height: 1.4;") You have already applied to this vacancy.
                   
                   - const isJobOpen = job.status === 'active';
                   - const isBeforeDeadline = job.deadline && new Date(job.deadline) > new Date();
                   
                   if isJobOpen && isBeforeDeadline
-                    form.withdraw-form(action=`/jobs/${job.id}/withdraw` method="POST")
+                    form.withdraw-form(action=`/jobs/${job.id}/withdraw` method="POST" style="width: 100%; margin: 0;")
                       button#withdrawBtn.btn.btn-danger.btn-block(type="submit" style="width: 100%;")
                         i.fas.fa-undo
                         |  Withdraw Application

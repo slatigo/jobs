@@ -1,5 +1,7 @@
 const express = require('express');
 const router = express.Router();
+const fs = require('fs');
+const path = require('path');
 const { Job, Application, sequelize } = require('../../models');
 const { isAuthenticated } = require('../../middleware/auth');
 const { isClosed, closedReason } = require('../../utils/jobStatus');
@@ -55,8 +57,7 @@ router.post(
         transaction: t
       });
 
-      // 🔴 FIX 1: Only block if they haven't withdrawn
-      if (existing && existing.status !== 'withdrawn') {
+      if (existing) {
         await t.rollback();
         return res.status(400).json({
           ok: false,
@@ -69,66 +70,43 @@ router.post(
 
       if (!fullName || !fullName.trim() || fullName.trim().length < 3) {
         await t.rollback();
-        return res.status(400).json({
-          ok: false,
-          message: 'Full name is required (at least 3 characters).',
-          field: 'fullName'
-        });
+        return res.status(400).json({ ok: false, message: 'Full name is required (at least 3 characters).', field: 'fullName' });
       }
       if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
         await t.rollback();
-        return res.status(400).json({
-          ok: false,
-          message: 'A valid email address is required.',
-          field: 'email'
-        });
+        return res.status(400).json({ ok: false, message: 'A valid email address is required.', field: 'email' });
       }
       if (!phone || !phone.trim()) {
         await t.rollback();
-        return res.status(400).json({
-          ok: false,
-          message: 'Phone number is required.',
-          field: 'phone'
-        });
+        return res.status(400).json({ ok: false, message: 'Phone number is required.', field: 'phone' });
       }
       if (!req.file) {
         await t.rollback();
-        return res.status(400).json({
-          ok: false,
-          message: 'Please attach your CV or resume.',
-          field: 'attachment'
-        });
+        return res.status(400).json({ ok: false, message: 'Please attach your CV or resume.', field: 'attachment' });
       }
 
-      /* ---- Create OR Update application ---- */
-      let application;
-      const applicationData = {
-        fullName: fullName.trim(),
-        email: email.trim(),
-        phone: phone.trim(),
-        coverLetter: null,
-        attachmentUrl:  `/uploads/resumes/${req.file.filename}`,
-        attachmentName: req.file.originalname,
-        attachmentMime: req.file.mimetype,
-        attachmentSize: req.file.size,
-        status: 'pending'
-      };
-
-      // 🔴 FIX 2: If withdrawn, overwrite the old record and reset to pending
-      if (existing && existing.status === 'withdrawn') {
-        application = await existing.update(applicationData, { transaction: t });
-      } else {
-        application = await Application.create({
+      /* ---- Create application ---- */
+      const application = await Application.create(
+        {
           jobId: job.id,
           userId: req.session.user.id,
-          ...applicationData
-        }, { transaction: t });
-      }
+          fullName: fullName.trim(),
+          email: email.trim(),
+          phone: phone.trim(),
+          coverLetter: null,
+          attachmentUrl:  `/uploads/resumes/${req.file.filename}`,
+          attachmentName: req.file.originalname,
+          attachmentMime: req.file.mimetype,
+          attachmentSize: req.file.size,
+          status: 'pending'
+        },
+        { transaction: t }
+      );
 
       /* ---- Initial history row ---- */
       await logStatusChange({
         applicationId: application.id,
-        fromStatus: existing ? existing.status : null,
+        fromStatus: null,
         toStatus: 'pending',
         changedByUserId: req.session.user.id,
         source: 'submit',
@@ -170,6 +148,9 @@ router.post(
   }
 );
 
+/* ================================================================== */
+/* POST /:id/withdraw — Delete application, file, and log the action   */
+/* ================================================================== */
 router.post('/:id/withdraw', isAuthenticated, async (req, res) => {
   const t = await sequelize.transaction();
   try {
@@ -190,24 +171,40 @@ router.post('/:id/withdraw', isAuthenticated, async (req, res) => {
       return res.status(404).json({ ok: false, message: 'Application not found.' });
     }
 
-    // Optional: Log that they withdrew before deleting it
-    await logStatusChange({
-      applicationId: application.id,
-      fromStatus: application.status,
-      toStatus: 'withdrawn',
-      changedByUserId: req.session.user.id,
-      source: 'applicant',
-      transaction: t
-    });
+    // 1. Log the withdrawal to the server console (Audit Trail)
+    console.log(`[WITHDRAWAL] User ${req.session.user.email} (ID: ${req.session.user.id}) withdrew their application for Job: "${job.title}" (ID: ${job.id}). Deleted file: ${application.attachmentName}`);
 
-    // 💥 DELETE the application entirely
+    // 2. Delete the physical PDF/DOC file from the server disk
+    if (application.attachmentUrl) {
+      // The attachmentUrl is stored as "/uploads/resumes/filename.pdf"
+      // We strip the leading slash to safely join it with the public directory path
+      const relativePath = application.attachmentUrl.startsWith('/') 
+        ? application.attachmentUrl.slice(1) 
+        : application.attachmentUrl;
+        
+      const filePath = path.join(__dirname, '..', '..', 'public', relativePath);
+      
+      if (fs.existsSync(filePath)) {
+        try {
+          fs.unlinkSync(filePath);
+        } catch (fileErr) {
+          console.error('[WITHDRAW FILE DELETE ERROR]', fileErr);
+          // We don't rollback the DB transaction if the file fails to delete, 
+          // the DB record should still be removed.
+        }
+      }
+    }
+
+    // 3. Delete the application record from the database
+    // (Note: If your DB has Cascade Delete, this will also wipe the history log. 
+    // If you want to keep history, remove this line and just update the status.)
     await application.destroy({ transaction: t });
-    
+
     await t.commit();
     
     return res.json({
       ok: true,
-      message: 'Your application has been withdrawn. You can now apply again.',
+      message: 'Your application has been withdrawn and removed. You can now apply again.',
       redirect: `/jobs/${req.params.id}`
     });
 
