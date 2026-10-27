@@ -170,9 +170,6 @@ router.post(
   }
 );
 
-/* ================================================================== */
-/* POST /:id/withdraw — Withdraw an application (AJAX)                 */
-/* ================================================================== */
 router.post('/:id/withdraw', isAuthenticated, async (req, res) => {
   const t = await sequelize.transaction();
   try {
@@ -180,7 +177,6 @@ router.post('/:id/withdraw', isAuthenticated, async (req, res) => {
     
     if (!job || isClosed(job)) {
       await t.rollback();
-      // 🔴 FIX 3: Return JSON instead of redirect
       return res.status(400).json({ ok: false, message: 'The deadline has passed. You can no longer withdraw.' });
     }
 
@@ -194,7 +190,7 @@ router.post('/:id/withdraw', isAuthenticated, async (req, res) => {
       return res.status(404).json({ ok: false, message: 'Application not found.' });
     }
 
-    // Log the change (so HR can see they withdrew)
+    // Optional: Log that they withdrew before deleting it
     await logStatusChange({
       applicationId: application.id,
       fromStatus: application.status,
@@ -204,13 +200,11 @@ router.post('/:id/withdraw', isAuthenticated, async (req, res) => {
       transaction: t
     });
 
-    // Update status instead of destroying the record
-    application.status = 'withdrawn';
-    await application.save({ transaction: t });
-
+    // 💥 DELETE the application entirely
+    await application.destroy({ transaction: t });
+    
     await t.commit();
     
-    // 🔴 FIX 4: Return JSON success message for the frontend SweetAlert
     return res.json({
       ok: true,
       message: 'Your application has been withdrawn. You can now apply again.',
@@ -220,7 +214,6 @@ router.post('/:id/withdraw', isAuthenticated, async (req, res) => {
   } catch (err) {
     await t.rollback();
     console.error('[WITHDRAW ERROR]', err);
-    // 🔴 FIX 5: Return JSON error for the frontend
     return res.status(500).json({ ok: false, message: 'Something went wrong while withdrawing. Please try again.' });
   }
 });

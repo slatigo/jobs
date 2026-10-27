@@ -108,21 +108,22 @@ block content
               h3 Apply for this Position
 
               if alreadyApplied
-                .applied-notice
-                  i.fas.fa-check-circle
-                  p You have already applied to this vacancy.
+                //- We use a simple block layout here with explicit width
+                .applied-notice(style="display: block; padding: 15px; margin-bottom: 15px;")
+                  div(style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;")
+                    i.fas.fa-check-circle(style="color: #28a745; font-size: 1.2rem;")
+                    p(style="margin: 0; font-weight: 500;") You have already applied to this vacancy.
                   
                   - const isJobOpen = job.status === 'active';
                   - const isBeforeDeadline = job.deadline && new Date(job.deadline) > new Date();
                   
                   if isJobOpen && isBeforeDeadline
-                    //- Added class="withdraw-form" and id="withdrawBtn"
-                    form.withdraw-form(action=`/jobs/${job.id}/withdraw` method="POST" style="margin-top: 15px; width: 100%;")
-                      button#withdrawBtn.btn.btn-danger.btn-sm.btn-block(type="submit")
+                    form.withdraw-form(action=`/jobs/${job.id}/withdraw` method="POST")
+                      button#withdrawBtn.btn.btn-danger.btn-block(type="submit" style="width: 100%;")
                         i.fas.fa-undo
                         |  Withdraw Application
                   else
-                    p.text-muted(style="font-size: 0.85em; margin-top: 10px;")
+                    p.text-muted(style="font-size: 0.85em; margin: 0;")
                       | The deadline has passed. You can no longer withdraw or edit this application.
 
               else if user
