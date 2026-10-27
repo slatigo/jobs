@@ -1,0 +1,92 @@
+extends ../layout
+
+block content
+  .container(style="margin-top: 30px;")
+    .page-header(style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;")
+      h1 User Directory
+      a.btn.btn-outline(href="/admin") Back to Dashboard
+
+    //- =======================================================
+    //- FILTER BAR (Date Range + Category)
+    //- =======================================================
+    .card(style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;")
+      form(action="/users" method="GET" style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;")
+        
+        .form-group(style="margin: 0; flex: 1; min-width: 180px;")
+          label(style="font-weight: 500; margin-bottom: 5px; display: block;") Category
+          select(name="role" class="form-control" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;")
+            option(value="all" selected=filters.role === 'all') All Users
+            option(value="applicant" selected=filters.role === 'applicant') Applicants Only
+            option(value="admin" selected=filters.role === 'admin') Admins Only
+            option(value="employer" selected=filters.role === 'employer') Employers Only
+
+        .form-group(style="margin: 0; flex: 1; min-width: 150px;")
+          label(style="font-weight: 500; margin-bottom: 5px; display: block;") Start Date
+          input(type="date" name="startDate" value=filters.startDate class="form-control" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;")
+
+        .form-group(style="margin: 0; flex: 1; min-width: 150px;")
+          label(style="font-weight: 500; margin-bottom: 5px; display: block;") End Date
+          input(type="date" name="endDate" value=filters.endDate class="form-control" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;")
+
+        div(style="display: flex; gap: 10px;")
+          button.btn.btn-primary(type="submit" style="padding: 8px 15px;")
+            i.fas.fa-filter
+            |  Filter
+          a.btn.btn-outline(href="/users" title="Clear Filters" style="padding: 8px 15px;")
+            i.fas.fa-times
+
+    //- =======================================================
+    //- USER TABLE
+    //- =======================================================
+    .card(style="background: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); overflow: hidden;")
+      table(style="width: 100%; border-collapse: collapse; text-align: left;")
+        thead(style="background: #f1f1f1;")
+          tr
+            th(style="padding: 12px; border-bottom: 2px solid #ddd;") Name & Details
+            th(style="padding: 12px; border-bottom: 2px solid #ddd;") Email
+            th(style="padding: 12px; border-bottom: 2px solid #ddd;") Joined Date
+        tbody
+          if users.length === 0
+            tr
+              td(colspan="3" style="text-align: center; padding: 20px; color: #777;") No users found matching these filters.
+          else
+            each u in users
+              tr(style="border-bottom: 1px solid #eee;")
+                td(style="padding: 12px;")
+                  //- Name
+                  span(style="font-weight: 500; font-size: 1.05em;")= u.name
+                  
+                  //- Badges container (Shows for everyone now)
+                  .badges(style="margin-top: 4px; display: flex; gap: 6px; align-items: center;")
+                    
+                    //- 1. ALWAYS SHOW ROLE BADGE (Dynamic colors based on role)
+                    - 
+                      let roleBadgeClass = 'badge-primary'; // Default blue for applicant
+                      if (u.role === 'admin') roleBadgeClass = 'badge-danger'; // Red for admin
+                      else if (u.role === 'employer') roleBadgeClass = 'badge-warning'; // Yellow/Orange for employer
+                    
+                    span(class=`badge ${roleBadgeClass}` style="font-size: 0.7em; text-transform: uppercase; padding: 3px 6px;")= u.role
+
+                    //- 2. ONLY SHOW APPLICATION COUNT IF APPLICANT
+                    if u.role === 'applicant'
+                      if u.applicationCount > 0
+                        a.badge.badge-success(
+                          href=`/applications?userId=${u.id}` 
+                          style="font-size: 0.75em; text-decoration: none; padding: 3px 6px;" 
+                          title="View Applications"
+                        )
+                          i.fas.fa-file-alt(style="margin-right: 4px;")
+                          | #{u.applicationCount} Application#{u.applicationCount > 1 ? 's' : ''}
+                      else
+                        span.badge(
+                          style="background-color: #e2e8f0; color: #64748b; font-size: 0.75em; padding: 3px 6px; border-radius: 4px;" 
+                          title="No applications submitted"
+                        )
+                          i.fas.fa-file-alt(style="margin-right: 4px;")
+                          | 0 Applications
+                
+                td(style="padding: 12px; color: #555; vertical-align: top;")
+                  div(style="margin-top: 4px;")= u.email
+                
+                td(style="padding: 12px; color: #555; vertical-align: top;")
+                  div(style="margin-top: 4px;")= new Date(u.createdAt).toLocaleDateString()

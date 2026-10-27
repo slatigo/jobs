@@ -8,7 +8,7 @@ const SequelizeStore = require('connect-session-sequelize')(session.Store);
 const flash = require('connect-flash');
 const methodOverride = require('method-override');
 const passport = require('./config/passport');
-
+const usersRouter = require('./routes/users'); // <--- Import it
 /* ------------------------------------------------------------------ */
 /* Ensure required folders exist                                       */
 /* ------------------------------------------------------------------ */
@@ -121,6 +121,7 @@ app.use('/',            require('./routes/index'));
 app.use('/jobs',        require('./routes/jobs'));
 app.use('/auth',        require('./routes/auth'));
 app.use('/admin',       require('./routes/admin'));
+app.use('/users', usersRouter);
 app.use('/departments', require('./routes/departments'));
 app.use('/files',       require('./routes/files'));
 app.use('/j', require('./routes/jobs/share'));

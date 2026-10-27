@@ -21,6 +21,7 @@ header.site-header
 
       if user && user.role === 'admin'
         a.nav-link(href="/departments" class=path.startsWith('/departments') ? 'active' : '') Departments
+        a.nav-link(href="/users" class=path.startsWith('/users') ? 'active' : '') Users
 
       if user && (user.role === 'employer' || user.role === 'admin')
         a.nav-link(href="/jobs/new" class=path === '/jobs/new' ? 'active' : '') Post a Job
