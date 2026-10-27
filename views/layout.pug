@@ -36,7 +36,22 @@ html(lang="en")
     include partials/footer.pug
     include partials/modal.pug
 
+    //- Core Scripts
     script(src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js")
     script(src="/js/main.js" defer)
     script(src="/js/modal.js" defer)
+    
+    //- Page-specific scripts
     block scripts
+
+    //- Tawk.to Chat Widget (System-wide)
+    script(type="text/javascript").
+      var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
+      (function(){
+      var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
+      s1.async=true;
+      s1.src='https://embed.tawk.to/6ae052e3e9f88b347479d4ed/1k5u47j3p';
+      s1.charset='UTF-8';
+      s1.setAttribute('crossorigin','*');
+      s0.parentNode.insertBefore(s1,s0);
+      })();
