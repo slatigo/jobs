@@ -7,15 +7,9 @@ const { logStatusChange } = require('../../utils/logStatusChange');
 const { upload, handleUploadError } = require('../../middleware/upload');
 const { sendApplicationReceivedEmail } = require('../../utils/mail');
 const { format: formatEAT } = require('../../utils/appTime');
+
 /* ================================================================== */
 /* POST /:id/apply — submit application with attachment                */
-/*                                                                     */
-/* Returns JSON:                                                       */
-/*   { ok: true,  redirect: '/jobs/:id' }                              */
-/*   { ok: false, message: '...', field?: 'attachment' }               */
-/*                                                                     */
-/* On file-upload errors (multer), the error middleware also returns   */
-/* JSON so the client can display it with SweetAlert.                  */
 /* ================================================================== */
 router.post(
   '/:id/apply',
@@ -23,7 +17,6 @@ router.post(
   (req, res, next) => {
     upload.single('attachment')(req, res, (err) => {
       if (err) {
-        // Translate known multer errors into friendly messages
         let message = 'Upload failed. Please try again.';
         if (err.code === 'LIMIT_FILE_SIZE') {
           message = 'Attachment must be 10 MB or smaller.';
@@ -62,7 +55,8 @@ router.post(
         transaction: t
       });
 
-      if (existing) {
+      // 🔴 FIX 1: Only block if they haven't withdrawn
+      if (existing && existing.status !== 'withdrawn') {
         await t.rollback();
         return res.status(400).json({
           ok: false,
@@ -106,28 +100,35 @@ router.post(
         });
       }
 
-      /* ---- Create application ---- */
-      const application = await Application.create(
-        {
+      /* ---- Create OR Update application ---- */
+      let application;
+      const applicationData = {
+        fullName: fullName.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+        coverLetter: null,
+        attachmentUrl:  `/uploads/resumes/${req.file.filename}`,
+        attachmentName: req.file.originalname,
+        attachmentMime: req.file.mimetype,
+        attachmentSize: req.file.size,
+        status: 'pending'
+      };
+
+      // 🔴 FIX 2: If withdrawn, overwrite the old record and reset to pending
+      if (existing && existing.status === 'withdrawn') {
+        application = await existing.update(applicationData, { transaction: t });
+      } else {
+        application = await Application.create({
           jobId: job.id,
           userId: req.session.user.id,
-          fullName: fullName.trim(),
-          email: email.trim(),
-          phone: phone.trim(),
-          coverLetter: null,
-          attachmentUrl:  `/uploads/resumes/${req.file.filename}`,
-          attachmentName: req.file.originalname,
-          attachmentMime: req.file.mimetype,
-          attachmentSize: req.file.size,
-          status: 'pending'
-        },
-        { transaction: t }
-      );
+          ...applicationData
+        }, { transaction: t });
+      }
 
       /* ---- Initial history row ---- */
       await logStatusChange({
         applicationId: application.id,
-        fromStatus: null,
+        fromStatus: existing ? existing.status : null,
         toStatus: 'pending',
         changedByUserId: req.session.user.id,
         source: 'submit',
@@ -135,8 +136,9 @@ router.post(
       });
 
       await t.commit();
+      
       sendApplicationReceivedEmail({
-        to: req.session.user.email,               // or email from the form — see note below
+        to: req.session.user.email,
         name: fullName.trim(),
         jobTitle: job.title,
         jobRef: job.jobRef || null,
@@ -146,6 +148,7 @@ router.post(
       }).catch((err) => {
         console.error('[APPLY EMAIL]', err.message);
       });
+
       return res.json({
         ok: true,
         message: 'Application submitted successfully! You can track its status under My Applications.',
@@ -166,29 +169,60 @@ router.post(
     }
   }
 );
-router.post('/:id/withdraw', isAuthenticated, async (req, res) => {
-  try {
-    const job = await Job.findByPk(req.params.id);
-    if (!job) return res.redirect('/jobs');
 
-    // BLOCK withdrawal if the job deadline has passed
-    if (isClosed(job)) {
-      // You can use req.flash('error', '...') here if you have flash configured
-      return res.redirect(`/jobs/${req.params.id}`);
+/* ================================================================== */
+/* POST /:id/withdraw — Withdraw an application (AJAX)                 */
+/* ================================================================== */
+router.post('/:id/withdraw', isAuthenticated, async (req, res) => {
+  const t = await sequelize.transaction();
+  try {
+    const job = await Job.findByPk(req.params.id, { transaction: t });
+    
+    if (!job || isClosed(job)) {
+      await t.rollback();
+      // 🔴 FIX 3: Return JSON instead of redirect
+      return res.status(400).json({ ok: false, message: 'The deadline has passed. You can no longer withdraw.' });
     }
 
     const application = await Application.findOne({
-      where: { jobId: req.params.id, userId: req.session.user.id }
+      where: { jobId: req.params.id, userId: req.session.user.id },
+      transaction: t
     });
 
-    if (application) {
-      await application.destroy();
+    if (!application) {
+      await t.rollback();
+      return res.status(404).json({ ok: false, message: 'Application not found.' });
     }
 
-    return res.redirect(`/jobs/${req.params.id}`);
+    // Log the change (so HR can see they withdrew)
+    await logStatusChange({
+      applicationId: application.id,
+      fromStatus: application.status,
+      toStatus: 'withdrawn',
+      changedByUserId: req.session.user.id,
+      source: 'applicant',
+      transaction: t
+    });
+
+    // Update status instead of destroying the record
+    application.status = 'withdrawn';
+    await application.save({ transaction: t });
+
+    await t.commit();
+    
+    // 🔴 FIX 4: Return JSON success message for the frontend SweetAlert
+    return res.json({
+      ok: true,
+      message: 'Your application has been withdrawn. You can now apply again.',
+      redirect: `/jobs/${req.params.id}`
+    });
+
   } catch (err) {
+    await t.rollback();
     console.error('[WITHDRAW ERROR]', err);
-    return res.redirect(`/jobs/${req.params.id}`);
+    // 🔴 FIX 5: Return JSON error for the frontend
+    return res.status(500).json({ ok: false, message: 'Something went wrong while withdrawing. Please try again.' });
   }
 });
+
 module.exports = router;
