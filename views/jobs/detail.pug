@@ -112,9 +112,13 @@ block content
                   i.fas.fa-check-circle
                   p You have already applied to this vacancy.
                   
-                  //- Only show the withdraw button if the job is still open
-                  if job.status === 'active' && new Date(job.deadline) > new Date()
-                    form(action=`/jobs/${job.id}/withdraw` method="POST" style="margin-top: 15px;" data-confirm="Are you sure you want to withdraw? You will need to re-upload your documents to apply again.")
+                  //- Note: It's best to pass a boolean 'canWithdraw' from your backend route.
+                  //- If you don't have that, this inline check works as long as 'job.deadline' is a Date object in Pug.
+                  - const isJobOpen = job.status === 'active';
+                  - const isBeforeDeadline = job.deadline && new Date(job.deadline) > new Date();
+                  
+                  if isJobOpen && isBeforeDeadline
+                    form(action=`/jobs/${job.id}/withdraw` method="POST" style="margin-top: 15px;" data-confirm="Are you sure you want to withdraw? You will need to re-upload your documents to apply again." data-confirm-title="Withdraw Application" data-confirm-label="Yes, Withdraw" data-confirm-tone="danger")
                       button.btn.btn-danger.btn-sm(type="submit")
                         i.fas.fa-undo
                         |  Withdraw Application
@@ -233,28 +237,57 @@ block scripts
       const filePreview  = document.getElementById('filePreview');
 
       /* --------------------------------------------------------------
-         File preview — filename + size on pick
+         File preview & Strict Client-Side Validation
          -------------------------------------------------------------- */
       if (fileInput && filePreview) {
         fileInput.addEventListener('change', () => {
           const f = fileInput.files && fileInput.files[0];
+          
           if (!f) {
             filePreview.classList.remove('visible', 'warn');
             filePreview.textContent = '';
             return;
           }
+
+          // 1. Validate Extension
+          const allowedExtensions = /(\.pdf|\.doc|\.docx)$/i;
+          if (!allowedExtensions.exec(f.name)) {
+            Swal.fire({
+              icon: 'error',
+              title: 'Invalid File Type',
+              text: 'Only PDF, DOC, or DOCX files are allowed. ZIP files and others are not permitted.'
+            });
+            fileInput.value = ''; // Clear input
+            filePreview.classList.remove('visible');
+            filePreview.textContent = '';
+            return;
+          }
+
+          // 2. Validate Size
           const sizeMB = f.size / (1024 * 1024);
+          if (sizeMB > 10) {
+            Swal.fire({
+              icon: 'error',
+              title: 'File Too Large',
+              text: `Your file is ${sizeMB.toFixed(1)} MB. The maximum allowed is 10 MB. Please compress your document.`
+            });
+            fileInput.value = ''; // Clear input
+            filePreview.classList.remove('visible');
+            filePreview.textContent = '';
+            return;
+          }
+
+          // 3. Show Preview (If Valid)
           const sizeText = sizeMB < 1
             ? Math.round(f.size / 1024) + ' KB'
             : sizeMB.toFixed(1) + ' MB';
 
           filePreview.classList.add('visible');
-          filePreview.classList.toggle('warn', sizeMB > 10);
+          filePreview.classList.remove('warn');
           filePreview.innerHTML =
-            '<i class="fas ' + (sizeMB > 10 ? 'fa-exclamation-triangle' : 'fa-file-alt') + '"></i>' +
+            '<i class="fas fa-file-alt"></i>' +
             '<span class="file-name">' + f.name + '</span>' +
-            '<span class="file-size">(' + sizeText + ')</span>' +
-            (sizeMB > 10 ? '<span class="file-size"> — exceeds 10 MB</span>' : '');
+            '<span class="file-size">(' + sizeText + ')</span>';
         });
       }
 
@@ -286,7 +319,16 @@ block scripts
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push('Please enter a valid email address.');
         if (!phone) errors.push('Phone number is required.');
         if (!file) errors.push('Please attach your CV or resume.');
-        else if (file.size > 10 * 1024 * 1024) errors.push('Attachment must be 10 MB or smaller.');
+        
+        // Final fallback checks (in case user bypassed the change event)
+        if (file) {
+          const allowedExtensions = /(\.pdf|\.doc|\.docx)$/i;
+          if (!allowedExtensions.exec(file.name)) {
+            errors.push('Only PDF, DOC, or DOCX files are allowed.');
+          } else if (file.size > 10 * 1024 * 1024) {
+            errors.push('Attachment must be 10 MB or smaller.');
+          }
+        }
 
         if (errors.length) {
           Swal.fire({
