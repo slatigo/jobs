@@ -24,7 +24,7 @@ const ALLOWED_MIME = new Set([
 
 const ALLOWED_EXT = new Set(['.pdf', '.doc', '.docx']);
 
-const MAX_SIZE = 5 * 1024 * 1024; // 5 MB
+const MAX_SIZE = 10 * 1024 * 1024; // 5 MB
 
 /* ------------------------------------------------------------------ */
 /* Filename sanitization                                               */
@@ -88,7 +88,7 @@ function handleUploadError(err, req, res, next) {
 
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
-      req.flash('error', 'File is too large. Maximum size is 5 MB.');
+      req.flash('error', 'File is too large. Maximum size is 10 MB.');
     } else if (err.code === 'LIMIT_FILE_COUNT') {
       req.flash('error', 'Only one file can be uploaded.');
     } else {
