@@ -38,27 +38,24 @@ block content
           //- EXPORT MENU (CSV / PDF)
           //- ============================================================
           - const exportQuery = activeFilter && activeFilter !== 'all' ? `?status=${activeFilter}` : ''
-          .export-menu
-            button.btn.btn-ghost(
-              type="button"
-              id="exportBtn"
-              aria-haspopup="true"
-              aria-expanded="false"
-            )
+          
+          details.export-native
+            summary.btn.btn-ghost(style="list-style: none; outline: none;")
               i.fas.fa-download
               | Export
-              i.fas.fa-chevron-down(style="margin-left:6px")
-            .export-dropdown(hidden)
+              i.fas.fa-chevron-down(style="margin-left:6px; font-size: 0.8em;")
+              
+            .export-native-dropdown
               a.export-item(href=`/jobs/${job.id}/applications/export.csv${exportQuery}`)
                 i.fas.fa-file-csv
                 div
                   strong CSV
-                  span Spreadsheet, opens in Excel/Sheets
+                  span Spreadsheet format
               a.export-item(href=`/jobs/${job.id}/applications/export.pdf${exportQuery}`)
                 i.fas.fa-file-pdf
                 div
                   strong PDF
-                  span Formatted report, print-ready
+                  span Print-ready report
 
       //- ============================================================
       //- STATUS TABS (built from the job's stages)

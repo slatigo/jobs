@@ -8,6 +8,7 @@
 /*   - Row drawer expansion                                             */
 /*   - Checkbox state                                                   */
 /*   - Stage menu popover (portalled, fixed-position)                   */
+/*   - Export dropdown menu (CSV / PDF)                                 */
 /* ================================================================== */
 (function () {
   'use strict';
@@ -41,6 +42,29 @@
       if (status === 'accepted') return 'success';
       if (status === 'rejected') return 'danger';
       return 'warning';
+    }
+
+    /* -------------------------------------------------------------- */
+    /* EXPORT DROPDOWN                                                 */
+    /* -------------------------------------------------------------- */
+    const exportBtn = document.getElementById('exportBtn');
+    if (exportBtn) {
+      const exportMenu = exportBtn.parentElement.querySelector('.export-dropdown');
+
+      exportBtn.addEventListener('click', (e) => {
+        e.stopPropagation(); // Prevent the document-level closer from firing immediately
+        const isOpen = !exportMenu.hasAttribute('hidden');
+        exportMenu.toggleAttribute('hidden', isOpen);
+        exportBtn.setAttribute('aria-expanded', String(!isOpen));
+      });
+
+      // Close export menu on outside click
+      document.addEventListener('click', (e) => {
+        if (!exportMenu.hasAttribute('hidden') && !e.target.closest('.export-menu')) {
+          exportMenu.setAttribute('hidden', '');
+          exportBtn.setAttribute('aria-expanded', 'false');
+        }
+      });
     }
 
     /* -------------------------------------------------------------- */
@@ -180,7 +204,6 @@
 
       if (moveSelBtn) {
         moveSelBtn.classList.toggle('is-dim', n === 0);
-        // don't touch .disabled — let clicks through so we can show the modal
       }
 
       if (selectAll) {
@@ -230,8 +253,6 @@
 
     /* -------------------------------------------------------------- */
     /* Stage menu popover — PORTALLED                                  */
-    /* The menu element lives outside the table (see applications.pug) */
-    /* and is positioned with position: fixed via JS.                  */
     /* -------------------------------------------------------------- */
     let openMenu = null;
     let openTrigger = null;
@@ -248,21 +269,15 @@
       const tRect = triggerEl.getBoundingClientRect();
       const mRect = menuEl.getBoundingClientRect();
 
-      /* Default: below the trigger, aligned to its left edge */
       let top  = tRect.bottom + 6;
       let left = tRect.left;
 
-      /* Flip above if it would overflow the bottom of the viewport */
       if (top + mRect.height > window.innerHeight - 8) {
         top = tRect.top - mRect.height - 6;
       }
-
-      /* Flip to right-aligned if it would overflow the right edge */
       if (left + mRect.width > window.innerWidth - 8) {
         left = tRect.right - mRect.width;
       }
-
-      /* Clamp inside the viewport */
       if (left < 8) left = 8;
       if (top  < 8) top  = 8;
 
@@ -272,18 +287,13 @@
 
     function openStageMenu(appId, menuEl, triggerEl) {
       closeOpenMenu();
-
-      /* Unhide FIRST so getBoundingClientRect returns real dimensions */
       menuEl.hidden = false;
       menuEl.dataset.forApp = appId;
-
       positionMenu(menuEl, triggerEl);
-
       triggerEl.setAttribute('aria-expanded', 'true');
       openMenu = menuEl;
       openTrigger = triggerEl;
 
-      /* Focus first enabled item for keyboard users */
       const first = menuEl.querySelector('.stage-menu-item:not(:disabled)');
       if (first) first.focus();
     }
@@ -325,16 +335,22 @@
 
     /* Close on Escape */
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') closeOpenMenu();
+      if (e.key === 'Escape') {
+        closeOpenMenu();
+        // Also close export menu
+        if (exportBtn) {
+          const exportMenu = exportBtn.parentElement.querySelector('.export-dropdown');
+          if (exportMenu) exportMenu.setAttribute('hidden', '');
+          exportBtn.setAttribute('aria-expanded', 'false');
+        }
+      }
     });
 
-    /* Reposition on scroll (fixed positioning means the menu must follow
-       the trigger; closing here would be jarring). */
+    /* Reposition on scroll/resize */
     window.addEventListener('scroll', () => {
       if (openMenu && openTrigger) positionMenu(openMenu, openTrigger);
     }, { passive: true, capture: true });
 
-    /* Reposition on resize */
     window.addEventListener('resize', () => {
       if (openMenu && openTrigger) positionMenu(openMenu, openTrigger);
     });

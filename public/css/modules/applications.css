@@ -472,3 +472,69 @@
 .dot-info    { background: var(--primary); }
 .dot-success { background: #10b981; }
 .dot-danger  { background: #ef4444; }
+
+/* ================================================================== */
+/* EXPORT BUTTON (NATIVE DETAILS)                                      */
+/* ================================================================== */
+
+/* 1. Container so the dropdown positions relative to the button */
+.export-native {
+  position: relative;
+  display: inline-block;
+}
+
+/* 2. Hide the default browser triangle arrow on the summary */
+.export-native > summary::-webkit-details-marker {
+  display: none;
+}
+.export-native > summary {
+  list-style: none; /* Hides the arrow in Firefox */
+}
+
+/* 3. The actual dropdown box */
+.export-native-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  background: #fff;
+  border: 1px solid var(--gray-200, #e5e7eb);
+  border-radius: var(--radius-sm, 8px);
+  box-shadow: 0 8px 24px rgba(0,0,0,.08);
+  min-width: 240px;
+  z-index: 100;
+  padding: 6px;
+}
+
+/* 4. The items inside the dropdown */
+.export-item {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border-radius: 6px;
+  color: var(--gray-900, #111827);
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.export-item:hover {
+  background: var(--gray-50, #f9fafb);
+}
+
+.export-item i {
+  margin-top: 3px;
+  font-size: 1.1rem;
+  color: var(--primary, #4f46e5);
+}
+
+.export-item strong {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.export-item span {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--gray-500, #6b7280);
+}
