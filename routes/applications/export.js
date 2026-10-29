@@ -143,8 +143,9 @@ router.get('/export.pdf', isAuthenticated, async (req, res) => {
 
     const doc = new PDFDocument({
       size: 'A4',
+      layout: 'landscape',  // <--- LANDSCAPE MODE
       bufferPages: true,
-      margins: { top: 50, bottom: 70, left: 50, right: 50 },
+      margins: { top: 40, bottom: 40, left: 40, right: 40 }, // Tighter margins for more room
       info: {
         Title: `Applications — ${job.title}`,
         Author: `${ORG.school} — ${ORG.directorate}`,
@@ -155,7 +156,7 @@ router.get('/export.pdf', isAuthenticated, async (req, res) => {
     doc.pipe(res);
 
     const PAGE_W = doc.page.width;
-    const MARGIN = 50;
+    const MARGIN = 40;
     const CONTENT_W = PAGE_W - MARGIN * 2;
 
     /* ---------- Palette ---------- */
@@ -169,35 +170,29 @@ router.get('/export.pdf', isAuthenticated, async (req, res) => {
     };
 
     /* ================================================================ */
-    /* BRANDED HEADER BAND                                              */
+    /* BRANDED HEADER BAND (Slimmer for landscape)                      */
     /* ================================================================ */
-    doc.rect(0, 0, PAGE_W, 132).fill(C.accentBg);
+    doc.rect(0, 0, PAGE_W, 110).fill(C.accentBg);
 
-    // Institutional heading (school + directorate)
     doc.fillColor(C.accent).font('Helvetica-Bold').fontSize(15)
-       .text(ORG.school.toUpperCase(), MARGIN, 30, {
-         width: CONTENT_W,
-         align: 'left',
-         characterSpacing: 0.5
+       .text(ORG.school.toUpperCase(), MARGIN, 24, {
+         width: CONTENT_W, align: 'left', characterSpacing: 0.5
        });
 
     doc.fillColor(C.ink).font('Helvetica').fontSize(11)
-       .text(ORG.directorate, MARGIN, 50, { width: CONTENT_W });
+       .text(ORG.directorate, MARGIN, 42, { width: CONTENT_W });
 
-    // Hairline separator under the institutional block
     doc.strokeColor(C.accent).lineWidth(0.75)
-       .moveTo(MARGIN, 70)
-       .lineTo(MARGIN + CONTENT_W, 70)
+       .moveTo(MARGIN, 60)
+       .lineTo(MARGIN + CONTENT_W, 60)
        .stroke();
 
-    // Report title + job
     doc.fillColor(C.ink).font('Helvetica-Bold').fontSize(14)
-       .text('Applications Report', MARGIN, 78, { width: CONTENT_W });
+       .text('Applications Report', MARGIN, 68, { width: CONTENT_W });
 
     doc.fillColor(C.ink).font('Helvetica-Bold').fontSize(11)
-       .text(job.title, MARGIN, 96, { width: CONTENT_W, ellipsis: true });
+       .text(job.title, MARGIN, 86, { width: CONTENT_W, ellipsis: true });
 
-    // Meta line
     doc.fillColor(C.muted).font('Helvetica').fontSize(8.5)
        .text(
          [
@@ -207,28 +202,26 @@ router.get('/export.pdf', isAuthenticated, async (req, res) => {
            `Generated: ${new Date().toISOString().slice(0, 10)}`,
            `${applications.length} application${applications.length === 1 ? '' : 's'}`
          ].filter(Boolean).join('   ·   '),
-         MARGIN, 112,
-         { width: CONTENT_W }
+         MARGIN, 98, { width: CONTENT_W }
        );
 
-    doc.y = 152;
+    doc.y = 130;
 
     /* ================================================================ */
-    /* TABLE SETUP                                                      */
+    /* TABLE SETUP (Landscape Widths)                                   */
     /* ================================================================ */
-    // Adjusted widths to give the date enough space on one line
     const cols = [
       { key: 'idx',     label: '#',         w: 30,  align: 'right' },
-      { key: 'name',    label: 'Applicant', w: 160, align: 'left'  },
-      { key: 'contact', label: 'Contact',   w: 170, align: 'left'  },
-      { key: 'status',  label: 'Status',    w: 75,  align: 'left'  },
-      { key: 'applied', label: 'Applied',   w: 0,   align: 'right' }
+      { key: 'name',    label: 'Applicant', w: 200, align: 'left'  },
+      { key: 'contact', label: 'Contact',   w: 280, align: 'left'  },
+      { key: 'status',  label: 'Status',    w: 100, align: 'left'  },
+      { key: 'applied', label: 'Applied',   w: 0,   align: 'right' } // Gets remaining ~160px
     ];
     const fixedW = cols.slice(0, -1).reduce((s, c) => s + c.w, 0);
     cols[cols.length - 1].w = CONTENT_W - fixedW;
 
-    const ROW_H = 26;
-    const HEAD_H = 26;
+    const ROW_H = 24; // Slightly tighter rows
+    const HEAD_H = 24;
 
     const drawTableHeader = () => {
       const y = doc.y;
@@ -236,9 +229,8 @@ router.get('/export.pdf', isAuthenticated, async (req, res) => {
       doc.fillColor(C.muted).font('Helvetica-Bold').fontSize(9);
       let x = MARGIN;
       cols.forEach(c => {
-        doc.text(c.label.toUpperCase(), x + 6, y + 8, {
-          width: c.w - 12,
-          align: c.align
+        doc.text(c.label.toUpperCase(), x + 6, y + 7, {
+          width: c.w - 12, align: c.align
         });
         x += c.w;
       });
@@ -251,7 +243,7 @@ router.get('/export.pdf', isAuthenticated, async (req, res) => {
     };
 
     const ensureSpace = (h) => {
-      if (doc.y + h > doc.page.height - doc.page.margins.bottom) {
+      if (doc.y + h > doc.page.height - doc.page.margins.bottom - 20) {
         doc.addPage();
         doc.y = doc.page.margins.top;
         drawTableHeader();
@@ -261,7 +253,7 @@ router.get('/export.pdf', isAuthenticated, async (req, res) => {
     drawTableHeader();
 
     /* ================================================================ */
-    /* ROWS                                                             */
+    /* ROWS (With Smart Text Truncation)                                */
     /* ================================================================ */
     applications.forEach((a, i) => {
       ensureSpace(ROW_H);
@@ -269,7 +261,7 @@ router.get('/export.pdf', isAuthenticated, async (req, res) => {
 
       const statusLabel = labelFor(a.status);
       
-      // Format date nicely as "07 Oct 2026" to prevent line wrapping
+      // Nice full date format: "27 Oct 2026"
       let applied = '—';
       if (a.createdAt) {
         const d = new Date(a.createdAt);
@@ -278,13 +270,28 @@ router.get('/export.pdf', isAuthenticated, async (req, res) => {
         applied = `${day} ${months[d.getMonth()]} ${d.getFullYear()}`;
       }
 
-      const contact = [a.email, a.phone].filter(Boolean).join('  ·  ');
-      const name = a.fullName || '—';
+      // Truncate contact natively using PDFKit's width measurement
+      let contactStr = [a.email, a.phone].filter(Boolean).join('  ·  ');
+      doc.font('Helvetica').fontSize(9);
+      if (doc.widthOfString(contactStr) > (cols[2].w - 12)) {
+        while (doc.widthOfString(contactStr + '...') > (cols[2].w - 12) && contactStr.length > 0) {
+          contactStr = contactStr.slice(0, -1);
+        }
+        contactStr += '...';
+      }
+
+      let nameStr = a.fullName || '—';
+      if (doc.widthOfString(nameStr) > (cols[1].w - 12)) {
+        while (doc.widthOfString(nameStr + '...') > (cols[1].w - 12) && nameStr.length > 0) {
+          nameStr = nameStr.slice(0, -1);
+        }
+        nameStr += '...';
+      }
 
       const cells = {
         idx:     String(i + 1),
-        name:    name,
-        contact: contact || '—',
+        name:    nameStr,
+        contact: contactStr || '—',
         status:  statusLabel,
         applied: applied
       };
@@ -295,22 +302,15 @@ router.get('/export.pdf', isAuthenticated, async (req, res) => {
       cols.forEach(c => {
         if (c.key === 'status') {
           const chipW = Math.min(c.w - 12, doc.widthOfString(statusLabel) + 16);
-          doc.roundedRect(x + 6, y + 6, chipW, 14, 7).fill(C.accentBg);
+          doc.roundedRect(x + 6, y + 5, chipW, 14, 7).fill(C.accentBg);
           doc.fillColor(C.accent).font('Helvetica-Bold').fontSize(8)
-             .text(statusLabel, x + 12, y + 9, {
-               width: chipW - 12,
-               height: 15,
-               ellipsis: true,
-               lineBreak: false
-             });
+             .text(statusLabel, x + 12, y + 8, { width: chipW - 12, lineBreak: false });
           doc.fillColor(C.ink).font('Helvetica').fontSize(9);
         } else {
-          doc.text(cells[c.key], x + 6, y + 8, {
+          doc.text(cells[c.key], x + 6, y + 7, {
             width: c.w - 12,
-            height: 15,          // Forces single line
             align: c.align,
-            ellipsis: true,
-            lineBreak: false     // Prevents PDFKit from calculating phantom heights
+            lineBreak: false // Safe now because we truncated it above
           });
         }
         x += c.w;
@@ -335,52 +335,31 @@ router.get('/export.pdf', isAuthenticated, async (req, res) => {
          .text('Appendix — Cover Letters', MARGIN, doc.y, { width: CONTENT_W });
       doc.moveDown(0.3);
       doc.strokeColor(C.accent).lineWidth(0.75)
-         .moveTo(MARGIN, doc.y)
-         .lineTo(MARGIN + CONTENT_W, doc.y)
-         .stroke();
+         .moveTo(MARGIN, doc.y).lineTo(MARGIN + CONTENT_W, doc.y).stroke();
       doc.moveDown(0.8);
 
       withCover.forEach((a) => {
-        // Measure needed height: name line + cover text
         const nameLineH = 16;
         const coverWidth = CONTENT_W - 12;
-        const coverH = doc.heightOfString(a.coverLetter, {
-          width: coverWidth,
-          align: 'left'
-        });
+        const coverH = doc.heightOfString(a.coverLetter, { width: coverWidth, align: 'left' });
         const blockH = nameLineH + coverH + 22;
 
         ensureSpace(blockH);
 
-        // Applicant header
         doc.fillColor(C.ink).font('Helvetica-Bold').fontSize(10)
-           .text(`${a.fullName}  ·  ${labelFor(a.status)}`, MARGIN, doc.y, {
-             width: CONTENT_W
-           });
+           .text(`${a.fullName}  ·  ${labelFor(a.status)}`, MARGIN, doc.y, { width: CONTENT_W });
         doc.moveDown(0.15);
         doc.fillColor(C.muted).font('Helvetica').fontSize(8.5)
-           .text(
-             [a.email, a.phone].filter(Boolean).join('   ·   '),
-             MARGIN,
-             doc.y,
-             { width: CONTENT_W }
-           );
+           .text([a.email, a.phone].filter(Boolean).join('   ·   '), MARGIN, doc.y, { width: CONTENT_W });
         doc.moveDown(0.35);
 
-        // Cover body (inset, left rule)
         const bodyY = doc.y;
         doc.fillColor(C.ink).font('Helvetica').fontSize(9)
-           .text(a.coverLetter, MARGIN + 12, bodyY, {
-             width: coverWidth,
-             align: 'left'
-           });
+           .text(a.coverLetter, MARGIN + 12, bodyY, { width: coverWidth, align: 'left' });
         const bodyEndY = doc.y;
 
-        // Left accent rule alongside the body
         doc.strokeColor(C.accentBg).lineWidth(2)
-           .moveTo(MARGIN + 4, bodyY)
-           .lineTo(MARGIN + 4, bodyEndY)
-           .stroke();
+           .moveTo(MARGIN + 4, bodyY).lineTo(MARGIN + 4, bodyEndY).stroke();
 
         doc.moveDown(1);
       });
@@ -392,27 +371,14 @@ router.get('/export.pdf', isAuthenticated, async (req, res) => {
     const range = doc.bufferedPageRange();
     for (let p = range.start; p < range.start + range.count; p++) {
       doc.switchToPage(p);
-
-      const footerY = doc.page.height - 42;
+      const footerY = doc.page.height - 30; // Adjusted for landscape margins
 
       doc.fillColor(C.muted).font('Helvetica').fontSize(7.5)
-         .text(
-           `${ORG.school} — ${ORG.directorate}`,
-           MARGIN, footerY,
-           { width: CONTENT_W, align: 'center' }
-         );
+         .text(`${ORG.school} — ${ORG.directorate}`, MARGIN, footerY, { width: CONTENT_W, align: 'center' });
 
       doc.fillColor(C.muted).font('Helvetica').fontSize(8)
-         .text(
-           `Applications — ${job.title}`,
-           MARGIN, footerY + 12,
-           { width: CONTENT_W / 2, align: 'left' }
-         )
-         .text(
-           `Page ${p - range.start + 1} of ${range.count}`,
-           MARGIN + CONTENT_W / 2, footerY + 12,
-           { width: CONTENT_W / 2, align: 'right' }
-         );
+         .text(`Applications — ${job.title}`, MARGIN, footerY + 12, { width: CONTENT_W / 2, align: 'left' })
+         .text(`Page ${p - range.start + 1} of ${range.count}`, MARGIN + CONTENT_W / 2, footerY + 12, { width: CONTENT_W / 2, align: 'right' });
     }
 
     doc.end();
