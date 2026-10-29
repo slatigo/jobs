@@ -15,7 +15,7 @@ const { isAuthenticated } = require('../../middleware/auth');
 /* ================================================================== */
 const ORG = {
   school: 'Makerere University Business School',
-  directorate: 'Human Resource Directorate'
+  directorate: 'HUMAN RESOURCE DIRECTORATE'
 };
 
 /* ================================================================== */
@@ -127,7 +127,7 @@ router.get('/export.csv', isAuthenticated, async (req, res) => {
 });
 
 /* ================================================================== */
-/* GET /:id/applications/export.pdf?status=<filter>                    */
+/* GET /:id/applications/export.pdf?status=<filter>                  */
 /* ================================================================== */
 router.get('/export.pdf', isAuthenticated, async (req, res) => {
   try {
@@ -143,9 +143,10 @@ router.get('/export.pdf', isAuthenticated, async (req, res) => {
 
     const doc = new PDFDocument({
       size: 'A4',
-      layout: 'landscape',  // <--- LANDSCAPE MODE
       bufferPages: true,
-      margins: { top: 40, bottom: 40, left: 40, right: 40 }, // Tighter margins for more room
+      autoFirstPage: true,
+      // Setting bottom margin to 0 prevents PDFKit's default auto-page break trigger
+      margins: { top: 50, bottom: 0, left: 50, right: 50 }, 
       info: {
         Title: `Applications — ${job.title}`,
         Author: `${ORG.school} — ${ORG.directorate}`,
@@ -156,7 +157,8 @@ router.get('/export.pdf', isAuthenticated, async (req, res) => {
     doc.pipe(res);
 
     const PAGE_W = doc.page.width;
-    const MARGIN = 40;
+    const MARGIN = 50;
+    const BOTTOM_MARGIN = 60;
     const CONTENT_W = PAGE_W - MARGIN * 2;
 
     /* ---------- Palette ---------- */
@@ -170,30 +172,38 @@ router.get('/export.pdf', isAuthenticated, async (req, res) => {
     };
 
     /* ================================================================ */
-    /* BRANDED HEADER BAND (Slimmer for landscape)                      */
+    /* BRANDED HEADER BAND (Centered)                                   */
     /* ================================================================ */
-    doc.rect(0, 0, PAGE_W, 110).fill(C.accentBg);
+    const HEADER_BAND_HEIGHT = 155;
+    doc.rect(0, 0, PAGE_W, HEADER_BAND_HEIGHT).fill(C.accentBg);
 
-    doc.fillColor(C.accent).font('Helvetica-Bold').fontSize(15)
-       .text(ORG.school.toUpperCase(), MARGIN, 24, {
-         width: CONTENT_W, align: 'left', characterSpacing: 0.5
+    try {
+      const logoPath = require('path').join(__dirname, '../../public/images/logo.png');
+      doc.image(logoPath, PAGE_W / 2 - 25, 12, { height: 38 });
+    } catch (e) {
+      console.warn('[PDF EXPORT] Logo not found at /public/images/logo.png');
+    }
+
+    doc.fillColor(C.accent).font('Helvetica-Bold').fontSize(13)
+       .text(ORG.school.toUpperCase(), MARGIN, 56, {
+         width: CONTENT_W, align: 'center', characterSpacing: 0.5
        });
 
-    doc.fillColor(C.ink).font('Helvetica').fontSize(11)
-       .text(ORG.directorate, MARGIN, 42, { width: CONTENT_W });
+    doc.fillColor(C.ink).font('Helvetica').fontSize(9.5)
+       .text(ORG.directorate, MARGIN, 73, { width: CONTENT_W, align: 'center' });
 
     doc.strokeColor(C.accent).lineWidth(0.75)
-       .moveTo(MARGIN, 60)
-       .lineTo(MARGIN + CONTENT_W, 60)
+       .moveTo(MARGIN, 87)
+       .lineTo(MARGIN + CONTENT_W, 87)
        .stroke();
 
-    doc.fillColor(C.ink).font('Helvetica-Bold').fontSize(14)
-       .text('Applications Report', MARGIN, 68, { width: CONTENT_W });
-
     doc.fillColor(C.ink).font('Helvetica-Bold').fontSize(11)
-       .text(job.title, MARGIN, 86, { width: CONTENT_W, ellipsis: true });
+       .text('Applications Report', MARGIN, 94, { width: CONTENT_W, align: 'center' });
 
-    doc.fillColor(C.muted).font('Helvetica').fontSize(8.5)
+    doc.fillColor(C.ink).font('Helvetica-Bold').fontSize(10)
+       .text(job.title, MARGIN, 110, { width: CONTENT_W, align: 'center', ellipsis: true });
+
+    doc.fillColor(C.muted).font('Helvetica').fontSize(8)
        .text(
          [
            job.department ? job.department.name : null,
@@ -202,50 +212,53 @@ router.get('/export.pdf', isAuthenticated, async (req, res) => {
            `Generated: ${new Date().toISOString().slice(0, 10)}`,
            `${applications.length} application${applications.length === 1 ? '' : 's'}`
          ].filter(Boolean).join('   ·   '),
-         MARGIN, 98, { width: CONTENT_W }
+         MARGIN, 128,
+         { width: CONTENT_W, height: 16, lineBreak: false, align: 'center', ellipsis: true }
        );
 
-    doc.y = 130;
-
     /* ================================================================ */
-    /* TABLE SETUP (Landscape Widths)                                   */
+    /* TABLE SETUP                                                      */
     /* ================================================================ */
     const cols = [
-      { key: 'idx',     label: '#',         w: 30,  align: 'right' },
-      { key: 'name',    label: 'Applicant', w: 200, align: 'left'  },
-      { key: 'contact', label: 'Contact',   w: 280, align: 'left'  },
-      { key: 'status',  label: 'Status',    w: 100, align: 'left'  },
-      { key: 'applied', label: 'Applied',   w: 0,   align: 'right' } // Gets remaining ~160px
+      { key: 'idx',     label: '#',         w: 25,  align: 'right' },
+      { key: 'name',    label: 'Applicant', w: 135, align: 'left'  },
+      { key: 'contact', label: 'Contact',   w: 155, align: 'left'  },
+      { key: 'status',  label: 'Status',    w: 75,  align: 'left'  },
+      { key: 'applied', label: 'Applied',   w: 0,   align: 'right' }
     ];
     const fixedW = cols.slice(0, -1).reduce((s, c) => s + c.w, 0);
     cols[cols.length - 1].w = CONTENT_W - fixedW;
 
-    const ROW_H = 24; // Slightly tighter rows
     const HEAD_H = 24;
+    let currentY = 175; 
+    doc.y = currentY;
 
     const drawTableHeader = () => {
-      const y = doc.y;
-      doc.rect(MARGIN, y, CONTENT_W, HEAD_H).fill(C.band);
+      doc.rect(MARGIN, currentY, CONTENT_W, HEAD_H).fill(C.band);
       doc.fillColor(C.muted).font('Helvetica-Bold').fontSize(9);
+      
       let x = MARGIN;
       cols.forEach(c => {
-        doc.text(c.label.toUpperCase(), x + 6, y + 7, {
-          width: c.w - 12, align: c.align
+        doc.text(c.label.toUpperCase(), x + 6, currentY + 7, {
+          width: c.w - 12, align: c.align, lineBreak: false
         });
         x += c.w;
       });
+      
       doc.strokeColor(C.line).lineWidth(0.5)
-         .moveTo(MARGIN, y + HEAD_H)
-         .lineTo(MARGIN + CONTENT_W, y + HEAD_H)
+         .moveTo(MARGIN, currentY + HEAD_H)
+         .lineTo(MARGIN + CONTENT_W, currentY + HEAD_H)
          .stroke();
-      doc.y = y + HEAD_H;
-      doc.fillColor(C.ink).font('Helvetica').fontSize(9);
+         
+      currentY += HEAD_H;
+      doc.y = currentY;
     };
 
     const ensureSpace = (h) => {
-      if (doc.y + h > doc.page.height - doc.page.margins.bottom - 20) {
+      if (currentY + h > doc.page.height - BOTTOM_MARGIN) {
         doc.addPage();
-        doc.y = doc.page.margins.top;
+        currentY = 50;
+        doc.y = currentY;
         drawTableHeader();
       }
     };
@@ -253,15 +266,11 @@ router.get('/export.pdf', isAuthenticated, async (req, res) => {
     drawTableHeader();
 
     /* ================================================================ */
-    /* ROWS (With Smart Text Truncation)                                */
+    /* ROWS                                                             */
     /* ================================================================ */
     applications.forEach((a, i) => {
-      ensureSpace(ROW_H);
-      const y = doc.y;
-
       const statusLabel = labelFor(a.status);
       
-      // Nice full date format: "27 Oct 2026"
       let applied = '—';
       if (a.createdAt) {
         const d = new Date(a.createdAt);
@@ -270,58 +279,53 @@ router.get('/export.pdf', isAuthenticated, async (req, res) => {
         applied = `${day} ${months[d.getMonth()]} ${d.getFullYear()}`;
       }
 
-      // Truncate contact natively using PDFKit's width measurement
-      let contactStr = [a.email, a.phone].filter(Boolean).join('  ·  ');
+      const contact = [a.email, a.phone].filter(Boolean).join('\n');
+      const name = a.fullName || '—';
+
       doc.font('Helvetica').fontSize(9);
-      if (doc.widthOfString(contactStr) > (cols[2].w - 12)) {
-        while (doc.widthOfString(contactStr + '...') > (cols[2].w - 12) && contactStr.length > 0) {
-          contactStr = contactStr.slice(0, -1);
-        }
-        contactStr += '...';
-      }
+      
+      const nameH = doc.heightOfString(name, { width: cols[1].w - 12 });
+      const contactH = doc.heightOfString(contact, { width: cols[2].w - 12 });
+      const appliedH = doc.heightOfString(applied, { width: cols[4].w - 12 });
+      
+      const maxH = Math.max(nameH, contactH, appliedH, 16);
+      const ROW_H = maxH + 14; 
 
-      let nameStr = a.fullName || '—';
-      if (doc.widthOfString(nameStr) > (cols[1].w - 12)) {
-        while (doc.widthOfString(nameStr + '...') > (cols[1].w - 12) && nameStr.length > 0) {
-          nameStr = nameStr.slice(0, -1);
-        }
-        nameStr += '...';
-      }
+      ensureSpace(ROW_H);
 
-      const cells = {
-        idx:     String(i + 1),
-        name:    nameStr,
-        contact: contactStr || '—',
-        status:  statusLabel,
-        applied: applied
-      };
-
-      let x = MARGIN;
       doc.fillColor(C.ink).font('Helvetica').fontSize(9);
 
-      cols.forEach(c => {
+      cols.forEach((c, index) => {
+        const cellVal = c.key === 'idx' ? String(i + 1) : 
+                        c.key === 'name' ? name : 
+                        c.key === 'contact' ? contact : 
+                        c.key === 'applied' ? applied : null;
+
+        const currentX = MARGIN + cols.slice(0, index).reduce((sum, col) => sum + col.w, 0);
+
         if (c.key === 'status') {
           const chipW = Math.min(c.w - 12, doc.widthOfString(statusLabel) + 16);
-          doc.roundedRect(x + 6, y + 5, chipW, 14, 7).fill(C.accentBg);
+          doc.roundedRect(currentX + 6, currentY + 6, chipW, 14, 7).fill(C.accentBg);
           doc.fillColor(C.accent).font('Helvetica-Bold').fontSize(8)
-             .text(statusLabel, x + 12, y + 8, { width: chipW - 12, lineBreak: false });
+             .text(statusLabel, currentX + 12, currentY + 9, { width: chipW - 12, lineBreak: false });
           doc.fillColor(C.ink).font('Helvetica').fontSize(9);
-        } else {
-          doc.text(cells[c.key], x + 6, y + 7, {
+        } else if (cellVal !== null) {
+          doc.text(cellVal, currentX + 6, currentY + 6, {
             width: c.w - 12,
             align: c.align,
-            lineBreak: false // Safe now because we truncated it above
+            lineBreak: true,
+            lineGap: 1 
           });
         }
-        x += c.w;
       });
 
       doc.strokeColor(C.line).lineWidth(0.4)
-         .moveTo(MARGIN, y + ROW_H)
-         .lineTo(MARGIN + CONTENT_W, y + ROW_H)
+         .moveTo(MARGIN, currentY + ROW_H)
+         .lineTo(MARGIN + CONTENT_W, currentY + ROW_H)
          .stroke();
 
-      doc.y = y + ROW_H;
+      currentY += ROW_H;
+      doc.y = currentY;
     });
 
     /* ================================================================ */
@@ -330,13 +334,17 @@ router.get('/export.pdf', isAuthenticated, async (req, res) => {
     const withCover = applications.filter(a => a.coverLetter && a.coverLetter.trim());
     if (withCover.length) {
       ensureSpace(60);
-      doc.moveDown(1.2);
+      currentY += 20;
+      doc.y = currentY;
+      
       doc.fillColor(C.accent).font('Helvetica-Bold').fontSize(12)
-         .text('Appendix — Cover Letters', MARGIN, doc.y, { width: CONTENT_W });
-      doc.moveDown(0.3);
+         .text('Appendix — Cover Letters', MARGIN, currentY, { width: CONTENT_W });
+      currentY += 16; 
+      
       doc.strokeColor(C.accent).lineWidth(0.75)
-         .moveTo(MARGIN, doc.y).lineTo(MARGIN + CONTENT_W, doc.y).stroke();
-      doc.moveDown(0.8);
+         .moveTo(MARGIN, currentY).lineTo(MARGIN + CONTENT_W, currentY).stroke();
+      currentY += 16; 
+      doc.y = currentY;
 
       withCover.forEach((a) => {
         const nameLineH = 16;
@@ -347,21 +355,22 @@ router.get('/export.pdf', isAuthenticated, async (req, res) => {
         ensureSpace(blockH);
 
         doc.fillColor(C.ink).font('Helvetica-Bold').fontSize(10)
-           .text(`${a.fullName}  ·  ${labelFor(a.status)}`, MARGIN, doc.y, { width: CONTENT_W });
-        doc.moveDown(0.15);
+           .text(`${a.fullName}   ·   ${labelFor(a.status)}`, MARGIN, currentY, { width: CONTENT_W });
+        currentY += 16;
+        
         doc.fillColor(C.muted).font('Helvetica').fontSize(8.5)
-           .text([a.email, a.phone].filter(Boolean).join('   ·   '), MARGIN, doc.y, { width: CONTENT_W });
-        doc.moveDown(0.35);
+           .text([a.email, a.phone].filter(Boolean).join('   ·   '), MARGIN, currentY, { width: CONTENT_W });
+        currentY += 14;
 
-        const bodyY = doc.y;
+        const bodyY = currentY;
         doc.fillColor(C.ink).font('Helvetica').fontSize(9)
            .text(a.coverLetter, MARGIN + 12, bodyY, { width: coverWidth, align: 'left' });
-        const bodyEndY = doc.y;
+        
+        currentY += coverH + 16;
+        doc.y = currentY;
 
         doc.strokeColor(C.accentBg).lineWidth(2)
-           .moveTo(MARGIN + 4, bodyY).lineTo(MARGIN + 4, bodyEndY).stroke();
-
-        doc.moveDown(1);
+           .moveTo(MARGIN + 4, bodyY).lineTo(MARGIN + 4, currentY - 16).stroke();
       });
     }
 
@@ -371,7 +380,7 @@ router.get('/export.pdf', isAuthenticated, async (req, res) => {
     const range = doc.bufferedPageRange();
     for (let p = range.start; p < range.start + range.count; p++) {
       doc.switchToPage(p);
-      const footerY = doc.page.height - 30; // Adjusted for landscape margins
+      const footerY = doc.page.height - 42;
 
       doc.fillColor(C.muted).font('Helvetica').fontSize(7.5)
          .text(`${ORG.school} — ${ORG.directorate}`, MARGIN, footerY, { width: CONTENT_W, align: 'center' });
