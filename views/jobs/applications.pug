@@ -34,6 +34,32 @@ block content
             i.fas.fa-layer-group
             | Manage Stages
 
+          //- ============================================================
+          //- EXPORT MENU (CSV / PDF)
+          //- ============================================================
+          - const exportQuery = activeFilter && activeFilter !== 'all' ? `?status=${activeFilter}` : ''
+          .export-menu
+            button.btn.btn-ghost(
+              type="button"
+              id="exportBtn"
+              aria-haspopup="true"
+              aria-expanded="false"
+            )
+              i.fas.fa-download
+              | Export
+              i.fas.fa-chevron-down(style="margin-left:6px")
+            .export-dropdown(hidden)
+              a.export-item(href=`/jobs/${job.id}/applications/export.csv${exportQuery}`)
+                i.fas.fa-file-csv
+                div
+                  strong CSV
+                  span Spreadsheet, opens in Excel/Sheets
+              a.export-item(href=`/jobs/${job.id}/applications/export.pdf${exportQuery}`)
+                i.fas.fa-file-pdf
+                div
+                  strong PDF
+                  span Formatted report, print-ready
+
       //- ============================================================
       //- STATUS TABS (built from the job's stages)
       //- ============================================================
