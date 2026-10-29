@@ -216,11 +216,12 @@ router.get('/export.pdf', isAuthenticated, async (req, res) => {
     /* ================================================================ */
     /* TABLE SETUP                                                      */
     /* ================================================================ */
+    // Adjusted widths to give the date enough space on one line
     const cols = [
-      { key: 'idx',     label: '#',         w: 28,  align: 'right' },
-      { key: 'name',    label: 'Applicant', w: 150, align: 'left'  },
-      { key: 'contact', label: 'Contact',   w: 190, align: 'left'  },
-      { key: 'status',  label: 'Status',    w: 80,  align: 'left'  },
+      { key: 'idx',     label: '#',         w: 30,  align: 'right' },
+      { key: 'name',    label: 'Applicant', w: 160, align: 'left'  },
+      { key: 'contact', label: 'Contact',   w: 170, align: 'left'  },
+      { key: 'status',  label: 'Status',    w: 75,  align: 'left'  },
       { key: 'applied', label: 'Applied',   w: 0,   align: 'right' }
     ];
     const fixedW = cols.slice(0, -1).reduce((s, c) => s + c.w, 0);
@@ -267,9 +268,16 @@ router.get('/export.pdf', isAuthenticated, async (req, res) => {
       const y = doc.y;
 
       const statusLabel = labelFor(a.status);
-      const applied = a.createdAt
-        ? new Date(a.createdAt).toISOString().slice(0, 10)
-        : '—';
+      
+      // Format date nicely as "07 Oct 2026" to prevent line wrapping
+      let applied = '—';
+      if (a.createdAt) {
+        const d = new Date(a.createdAt);
+        const day = String(d.getDate()).padStart(2, '0');
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        applied = `${day} ${months[d.getMonth()]} ${d.getFullYear()}`;
+      }
+
       const contact = [a.email, a.phone].filter(Boolean).join('  ·  ');
       const name = a.fullName || '—';
 
@@ -291,6 +299,7 @@ router.get('/export.pdf', isAuthenticated, async (req, res) => {
           doc.fillColor(C.accent).font('Helvetica-Bold').fontSize(8)
              .text(statusLabel, x + 12, y + 9, {
                width: chipW - 12,
+               height: 15,
                ellipsis: true,
                lineBreak: false
              });
@@ -298,9 +307,10 @@ router.get('/export.pdf', isAuthenticated, async (req, res) => {
         } else {
           doc.text(cells[c.key], x + 6, y + 8, {
             width: c.w - 12,
+            height: 15,          // Forces single line
             align: c.align,
             ellipsis: true,
-            lineBreak: false
+            lineBreak: false     // Prevents PDFKit from calculating phantom heights
           });
         }
         x += c.w;
