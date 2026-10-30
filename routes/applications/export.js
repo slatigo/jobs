@@ -9,7 +9,10 @@ const {
   Department
 } = require('../../models');
 const { isAuthenticated } = require('../../middleware/auth');
+const { ZipArchive } = require('archiver');
 
+const fs = require('fs');
+const path = require('path');
 /* ================================================================== */
 /* Institutional branding                                              */
 /* ================================================================== */
@@ -398,5 +401,84 @@ router.get('/export.pdf', isAuthenticated, async (req, res) => {
     res.redirect(`/jobs/${req.params.id}/applications`);
   }
 });
+
+
+/* ================================================================== */
+/* GET /:id/applications/download-zip?status=<filter>                  */
+/* ================================================================== */
+router.get('/download-zip', isAuthenticated, async (req, res) => {
+  try {
+    // 1. Re-use your existing auth and context logic
+    const ctx = await loadContext(req);
+    if (ctx.error) return sendAuthError(req, res, ctx);
+
+    const { job, applications } = ctx;
+
+    // Filter out applications without an attachment
+    const withFiles = applications.filter(a => a.attachmentUrl);
+
+    if (withFiles.length === 0) {
+      req.flash('error', 'No resumes found to download for this filter.');
+      return res.redirect(`/jobs/${job.id}/applications`);
+    }
+
+    // 2. Set headers for ZIP download
+    const suffix = req.query.status && req.query.status !== 'all' ? `-${req.query.status}` : '-all';
+    const filename = `applications-${safeSlug(job.title)}${suffix}.zip`;
+
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    // 3. Create the ZIP archive and pipe it to the response
+    // Use the ZipArchive class we imported at the top
+    const archive = new ZipArchive({
+      zlib: { level: 9 } // Maximum compression
+    });
+
+    // Listen for errors
+    archive.on('error', (err) => {
+      console.error('[ZIP ERROR]', err);
+      if (!res.headersSent) {
+        req.flash('error', 'Error generating ZIP file.');
+        res.redirect(`/jobs/${job.id}/applications`);
+      }
+    });
+
+    // Pipe the archive data to the response
+    archive.pipe(res);
+
+    // 4. Loop through applications and add files to the zip
+    for (const app of withFiles) {
+      // Extract the filename from the URL
+      const fileName = app.attachmentUrl.split('/').pop();
+      
+      // Determine where the file is stored locally
+      // IMPORTANT: Adjust this path if your files are stored elsewhere (e.g., 'uploads/')
+       const filePath = path.join(__dirname, '../../public/uploads/resumes', fileName);
+
+      if (fs.existsSync(filePath)) {
+        // Rename the file inside the zip to include the applicant's name for clarity
+        const safeName = app.fullName.replace(/[^a-z0-9]/gi, '_');
+        const fileExt = path.extname(fileName);
+        const newNameInZip = `${safeName}_${app.id}${fileExt}`;
+
+        archive.file(filePath, { name: newNameInZip });
+      } else {
+        console.warn(`[ZIP DOWNLOAD] File not found on disk: ${filePath}`);
+      }
+    }
+
+    // 5. Finalize the archive (this triggers the download to finish)
+    await archive.finalize();
+
+  } catch (err) {
+    console.error('[ZIP DOWNLOAD]', err);
+    if (!res.headersSent) {
+      req.flash('error', 'Error downloading resumes.');
+      res.redirect(`/jobs/${req.params.id}/applications`);
+    }
+  }
+});
+
 
 module.exports = router;

@@ -56,6 +56,11 @@ block content
                 div
                   strong PDF
                   span Print-ready report
+              a.export-item(href=`/jobs/${job.id}/applications/download-zip${exportQuery}`)
+                i.fas.fa-file-archive
+                div
+                  strong ZIP
+                  span All resumes
 
       //- ============================================================
       //- STATUS TABS (built from the job's stages)
