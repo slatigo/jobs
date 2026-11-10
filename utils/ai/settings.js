@@ -2,7 +2,7 @@ const { AiSetting } = require('../../models');
 const { decrypt, encrypt, mask } = require('./secrets');
 
 const MODEL_PRESETS = {
-  gemini: ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-2.5-pro'],
+  gemini: ['gemini-3.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-3.8-flash'],
   anthropic: ['claude-sonnet-4-5', 'claude-haiku-4-5', 'claude-opus-4-1']
 };
 

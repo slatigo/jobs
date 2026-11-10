@@ -152,17 +152,48 @@ async function callGeminiOnce({ model, apiKey, system = SCREEN_SYSTEM, prompt, p
   return text;
 }
 
+const GEMINI_FALLBACK_MODELS = [
+  'gemini-3.5-flash',
+  'gemini-2.5-flash-lite',
+  'gemini-2.5-flash',
+  'gemini-3.8-flash'
+];
+
 async function callGemini(opts) {
-  try {
-    return await callGeminiOnce(opts);
-  } catch (err) {
-    // Automatically follow Google's model replacement recommendation if a deprecated model name is configured
-    const match = String(err.message || '').match(/use models\/([a-z0-9.-]+)/i);
-    if (match && match[1] && match[1] !== opts.model) {
-      return await callGeminiOnce({ ...opts, model: match[1] });
+  const requested = String(opts.model || 'gemini-3.5-flash').replace(/^models\//, '');
+  const candidates = [
+    requested,
+    ...GEMINI_FALLBACK_MODELS.filter((m) => m !== requested)
+  ];
+
+  let lastErr = null;
+  for (const candidateModel of candidates) {
+    try {
+      return await callGeminiOnce({ ...opts, model: candidateModel });
+    } catch (err) {
+      lastErr = err;
+      const msg = String(err.message || '');
+      // Follow explicit replacement hint if present
+      const match = msg.match(/use models\/([a-z0-9.-]+)/i);
+      if (match && match[1] && !candidates.includes(match[1])) {
+        try {
+          return await callGeminiOnce({ ...opts, model: match[1] });
+        } catch (innerErr) {
+          lastErr = innerErr;
+        }
+      }
+      // Retry next Gemini Flash model on 503 (high demand), 429 (quota/rate spike), or 404 (deprecated model)
+      const isTransientOrModelIssue =
+        err.status === 503 ||
+        err.status === 429 ||
+        err.status === 404 ||
+        /high demand|overloaded|unavailable|not found|quota/i.test(msg);
+      if (!isTransientOrModelIssue) {
+        throw err;
+      }
     }
-    throw err;
   }
+  throw lastErr;
 }
 
 async function callAnthropic({ model, apiKey, system = SCREEN_SYSTEM, prompt, parts = [] }) {
