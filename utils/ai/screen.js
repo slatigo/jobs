@@ -219,10 +219,104 @@ async function latestMap(applicationIds) {
   return map;
 }
 
+/* ------------------------------------------------------------------ */
+/* Server-Side Background Bulk Screening Queue                        */
+/* ------------------------------------------------------------------ */
+const bulkJobs = new Map();
+const BULK_CONCURRENCY = 2;
+
+function getBulkStatus(jobId) {
+  return bulkJobs.get(Number(jobId)) || null;
+}
+
+function stopBulkJob(jobId) {
+  const state = bulkJobs.get(Number(jobId));
+  if (state && state.status === 'running') {
+    state.stopRequested = true;
+  }
+  return state || null;
+}
+
+function startBulkJob({ job, applications, stages, departmentName, userId }) {
+  const jobId = Number(job.id);
+  const existing = bulkJobs.get(jobId);
+  if (existing && existing.status === 'running') {
+    return existing;
+  }
+
+  const queue = applications.slice();
+  const state = {
+    jobId,
+    status: 'running',
+    total: queue.length,
+    completed: 0,
+    failed: 0,
+    currentNames: [],
+    lastError: '',
+    startedAt: Date.now(),
+    finishedAt: null,
+    stopRequested: false
+  };
+  bulkJobs.set(jobId, state);
+
+  setImmediate(async () => {
+    try {
+      // Ensure JD rubric is analyzed once before parallel workers start
+      await analyzeJob({ job, departmentName, userId, force: false });
+
+      let index = 0;
+      const runWorker = async (workerId) => {
+        if (workerId > 0) {
+          await new Promise((r) => setTimeout(r, workerId * 1200));
+        }
+        while (!state.stopRequested) {
+          const i = index++;
+          if (i >= queue.length) break;
+          const app = queue[i];
+          const name = app.fullName || `#${app.id}`;
+          state.currentNames.push(name);
+          try {
+            await screenOne({ job, application: app, stages, departmentName, userId });
+            state.completed++;
+          } catch (err) {
+            state.failed++;
+            state.lastError = `${name}: ${err.message || 'Screening error'}`;
+            console.error(`[AI BULK SCREEN] Candidate ${app.id} (${name}) failed:`, err.message);
+            if (/no API key is configured/i.test(err.message || '')) {
+              state.stopRequested = true;
+              break;
+            }
+          } finally {
+            state.currentNames = state.currentNames.filter((n) => n !== name);
+          }
+        }
+      };
+
+      const workerCount = Math.min(BULK_CONCURRENCY, Math.max(1, queue.length));
+      await Promise.all(
+        Array.from({ length: workerCount }, (_, w) => runWorker(w))
+      );
+
+      state.status = state.stopRequested ? 'stopped' : 'completed';
+      state.finishedAt = Date.now();
+    } catch (err) {
+      state.status = 'error';
+      state.lastError = err.message || 'Bulk screening stopped unexpectedly.';
+      state.finishedAt = Date.now();
+      state.currentNames = [];
+    }
+  });
+
+  return state;
+}
+
 module.exports = {
   getJobAnalysis,
   analyzeJob,
   screenOne,
   decideOne,
-  latestMap
+  latestMap,
+  startBulkJob,
+  getBulkStatus,
+  stopBulkJob
 };

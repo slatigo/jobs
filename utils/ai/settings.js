@@ -70,7 +70,15 @@ async function activeCredential() {
     const name = provider === 'anthropic' ? 'Claude (Anthropic)' : 'Google Gemini';
     throw new Error(`${name} is the active AI provider, but no API key is configured yet. Go to Admin → AI Settings to add your API key.`);
   }
-  return { provider, model, apiKey };
+
+  const secondaryProvider = provider === 'anthropic' ? 'gemini' : 'anthropic';
+  const secondaryModel = secondaryProvider === 'anthropic' ? row.anthropicModel : row.geminiModel;
+  const secondaryKey = resolveRawKey(row, secondaryProvider);
+  const fallback = secondaryKey
+    ? { provider: secondaryProvider, model: secondaryModel, apiKey: secondaryKey }
+    : null;
+
+  return { provider, model, apiKey, fallback };
 }
 
 async function saveSettings({ body, userId }) {

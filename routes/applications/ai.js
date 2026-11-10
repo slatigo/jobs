@@ -3,7 +3,7 @@ const router = express.Router({ mergeParams: true });
 const ExcelJS = require('exceljs');
 const { Job, Application, JobStage, Department, AiScreening } = require('../../models');
 const { isAuthenticated } = require('../../middleware/auth');
-const { analyzeJob, getJobAnalysis, screenOne, decideOne, latestMap } = require('../../utils/ai/screen');
+const { analyzeJob, getJobAnalysis, screenOne, decideOne, latestMap, startBulkJob, getBulkStatus, stopBulkJob } = require('../../utils/ai/screen');
 const { stageLabel } = require('../../utils/ai/advert');
 
 async function loadJob(req, res) {
@@ -80,6 +80,94 @@ router.post('/ai/screen', isAuthenticated, async (req, res) => {
   } catch (err) {
     console.error('[AI SCREEN]', err.message);
     res.status(400).json({ ok: false, error: err.message || 'Screening failed.' });
+  }
+});
+
+router.post('/ai/bulk-start', isAuthenticated, async (req, res) => {
+  try {
+    const job = await loadJob(req, res);
+    if (!job) return;
+
+    const stages = await stagesFor(job);
+    const allApps = await Application.findAll({
+      where: { jobId: job.id },
+      order: [['createdAt', 'DESC']]
+    });
+
+    const requestedIds = Array.isArray(req.body.applicationIds)
+      ? req.body.applicationIds.map((id) => Number(id)).filter(Boolean)
+      : [];
+
+    let targetApps = [];
+    if (requestedIds.length > 0) {
+      const idSet = new Set(requestedIds);
+      targetApps = allApps.filter((a) => idSet.has(Number(a.id)));
+    } else {
+      const existingMap = await latestMap(allApps.map((a) => a.id));
+      const unscreened = allApps.filter((a) => !existingMap[a.id]);
+      targetApps = unscreened.length > 0 ? unscreened : allApps;
+    }
+
+    if (!targetApps.length) {
+      return res.status(400).json({ ok: false, error: 'No applications found to screen.' });
+    }
+
+    const state = startBulkJob({
+      job,
+      applications: targetApps,
+      stages,
+      departmentName: job.department ? job.department.name : '',
+      userId: req.session.user.id
+    });
+
+    res.json({ ok: true, state });
+  } catch (err) {
+    console.error('[AI BULK START]', err.message);
+    res.status(400).json({ ok: false, error: err.message || 'Could not start bulk screening.' });
+  }
+});
+
+router.get('/ai/bulk-status', isAuthenticated, async (req, res) => {
+  try {
+    const job = await loadJob(req, res);
+    if (!job) return;
+
+    const allApps = await Application.findAll({
+      where: { jobId: job.id },
+      attributes: ['id']
+    });
+    const appIds = allApps.map((a) => a.id);
+    const screenings = await latestMap(appIds);
+
+    const counts = { pass: 0, hold: 0, fail: 0, unscreened: 0 };
+    for (const id of appIds) {
+      const s = screenings[id];
+      if (!s) counts.unscreened++;
+      else if (s.judgementCode === 'pass') counts.pass++;
+      else if (s.judgementCode === 'hold') counts.hold++;
+      else if (s.judgementCode === 'fail') counts.fail++;
+    }
+
+    res.json({
+      ok: true,
+      state: getBulkStatus(job.id),
+      screenings,
+      counts
+    });
+  } catch (err) {
+    console.error('[AI BULK STATUS]', err.message);
+    res.status(400).json({ ok: false, error: err.message || 'Could not fetch bulk status.' });
+  }
+});
+
+router.post('/ai/bulk-stop', isAuthenticated, async (req, res) => {
+  try {
+    const job = await loadJob(req, res);
+    if (!job) return;
+    const state = stopBulkJob(job.id);
+    res.json({ ok: true, state });
+  } catch (err) {
+    res.status(400).json({ ok: false, error: err.message || 'Could not stop bulk screening.' });
   }
 });
 

@@ -305,51 +305,187 @@
     }
 
     /* -------------------------------------------------------------- */
-    /* 6. Bulk Screening (Selected or Entire Current List)            */
+    /* 6. Server-Side Background Bulk Screening + Live Row Updates    */
     /* -------------------------------------------------------------- */
+    let bulkPollTimer = null;
+
+    function syncLiveScreenings(screenings, counts) {
+      if (counts) {
+        const elPass = document.getElementById('aiCountPass');
+        const elHold = document.getElementById('aiCountHold');
+        const elFail = document.getElementById('aiCountFail');
+        const elUnscreened = document.getElementById('aiCountUnscreened');
+        if (elPass) elPass.textContent = counts.pass;
+        if (elHold) elHold.textContent = counts.hold;
+        if (elFail) elFail.textContent = counts.fail;
+        if (elUnscreened) elUnscreened.textContent = counts.unscreened;
+      }
+
+      if (!screenings) return;
+      const judgeIcons = {
+        pass: 'fa-check-circle',
+        hold: 'fa-exclamation-circle',
+        fail: 'fa-times-circle'
+      };
+
+      document.querySelectorAll('.app-row').forEach((row) => {
+        const appId = row.dataset.appId;
+        const ai = screenings[appId];
+        if (!ai) return;
+
+        row.dataset.aiJudgement = ai.judgementCode;
+        row.dataset.aiRecommendation = ai.hrDecision === 'pending' ? ai.recommendation : '';
+
+        const cell = row.querySelector('.td-ai-judgement');
+        if (cell && !cell.querySelector('.ai-judgement-cell')) {
+          const icon = judgeIcons[ai.judgementCode] || 'fa-info-circle';
+          const scoreHtml = ai.mandatoryTotal > 0
+            ? `<span class="ai-rec-score">(${ai.mandatoryMet}/${ai.mandatoryTotal})</span>`
+            : '';
+          cell.innerHTML = `
+            <div class="ai-judgement-cell">
+              <button type="button" class="ai-rec ai-rec-${escHtml(ai.recommendation)}" data-ai-open="${escHtml(appId)}" title="Click to view full AI checklist & evidence">
+                <i class="fas ${icon}"></i>
+                <span class="ai-rec-main">${escHtml(ai.judgement)}</span>
+                ${scoreHtml}
+              </button>
+              <span class="ai-click-hint" data-ai-open="${escHtml(appId)}">Click for details</span>
+            </div>
+          `;
+          cell.querySelectorAll('[data-ai-open]').forEach((el) => {
+            el.addEventListener('click', (e) => {
+              e.stopPropagation();
+              sessionStorage.setItem('mubs_ai_open_drawer', String(appId));
+              window.location.reload();
+            });
+          });
+        }
+      });
+    }
+
+    function ensureStopButton(visible) {
+      if (!progressEl) return;
+      let stopBtn = document.getElementById('aiBulkStopBtn');
+      if (!visible) {
+        if (stopBtn) stopBtn.hidden = true;
+        return;
+      }
+      if (!stopBtn) {
+        stopBtn = document.createElement('button');
+        stopBtn.id = 'aiBulkStopBtn';
+        stopBtn.type = 'button';
+        stopBtn.className = 'btn btn-sm btn-ghost';
+        stopBtn.style.marginLeft = '8px';
+        stopBtn.innerHTML = '<i class="fas fa-stop-circle"></i> Stop';
+        stopBtn.addEventListener('click', async () => {
+          const jobId = getJobId();
+          stopBtn.disabled = true;
+          stopBtn.textContent = 'Stopping…';
+          await fetch(`/jobs/${jobId}/applications/ai/bulk-stop`, { method: 'POST' }).catch(() => {});
+        });
+        if (progressClose && progressClose.parentNode) {
+          progressClose.parentNode.insertBefore(stopBtn, progressClose);
+        } else {
+          progressEl.appendChild(stopBtn);
+        }
+      }
+      stopBtn.disabled = false;
+      stopBtn.innerHTML = '<i class="fas fa-stop-circle"></i> Stop';
+      stopBtn.hidden = false;
+    }
+
+    async function pollBulkStatus() {
+      const jobId = getJobId();
+      if (!jobId) return;
+
+      try {
+        const res = await fetch(`/jobs/${jobId}/applications/ai/bulk-status`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) return;
+
+        syncLiveScreenings(data.screenings, data.counts);
+
+        const st = data.state;
+        if (!st) return;
+
+        if (st.status === 'running') {
+          const activeText = st.currentNames && st.currentNames.length
+            ? ` · Reading: ${st.currentNames.join(', ')}`
+            : '';
+          const failText = st.failed > 0 ? ` (${st.failed} failed)` : '';
+          showProgress(
+            `Background Screening: ${st.completed} of ${st.total} completed${failText}${activeText}…`,
+            true,
+            false
+          );
+          ensureStopButton(true);
+          bulkPollTimer = setTimeout(pollBulkStatus, 2500);
+        } else if (st.status === 'completed' || st.status === 'stopped' || st.status === 'error') {
+          ensureStopButton(false);
+          if (bulkPollTimer) {
+            clearTimeout(bulkPollTimer);
+            bulkPollTimer = null;
+          }
+          if (st.completed === 0 && st.failed > 0) {
+            showProgress(`Bulk screening failed: ${st.lastError || 'Check AI settings'}`, false, true);
+          } else {
+            const label = st.status === 'stopped' ? 'Bulk screening paused' : 'Bulk screening complete';
+            showProgress(
+              `${label}: ${st.completed} of ${st.total} screened${st.failed ? ` (${st.failed} failed)` : ''}. Refreshing full checklists…`,
+              false,
+              false
+            );
+            setTimeout(() => window.location.reload(), 800);
+          }
+        }
+      } catch (err) {
+        bulkPollTimer = setTimeout(pollBulkStatus, 3500);
+      }
+    }
+
     async function runBulkScreen(rows) {
       if (!rows.length) {
         showProgress('No applications selected to screen.', false, true);
         return;
       }
 
-      if (jdCard && jdCard.dataset.jdAnalyzed !== '1') {
-        showProgress('Reading and analyzing Job Description first…', true);
-        await runJdAnalysis(false);
-      }
+      const jobId = getJobId();
+      const applicationIds = rows.map((r) => Number(r.dataset.appId)).filter(Boolean);
 
-      let completed = 0;
-      let failed = 0;
-      let lastError = '';
+      showProgress(`Starting server background queue for ${applicationIds.length} candidate(s)…`, true, false);
 
-      for (let i = 0; i < rows.length; i++) {
-        const row = rows[i];
-        const appId = row.dataset.appId;
-        const appName = row.dataset.appName || `#${appId}`;
-        showProgress(`Screening ${i + 1} of ${rows.length}: ${appName}…`, true);
-
-        try {
-          await screenCandidate(appId, appName);
-          completed++;
-        } catch (err) {
-          failed++;
-          lastError = err.message || 'Screening error';
-          // Stop early if API key is missing
-          if (/API key/i.test(lastError)) break;
+      try {
+        const res = await fetch(`/jobs/${jobId}/applications/ai/bulk-start`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ applicationIds })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) {
+          throw new Error(data.error || 'Could not start bulk screening.');
         }
-      }
 
-      if (completed === 0 && failed > 0) {
-        showProgress(`Screening stopped: ${lastError}`, false, true);
-        return;
+        if (bulkPollTimer) clearTimeout(bulkPollTimer);
+        pollBulkStatus();
+      } catch (err) {
+        showProgress(err.message || 'Could not start bulk screening.', false, true);
       }
-
-      showProgress(
-        `Screened ${completed} of ${rows.length} candidate(s)${failed ? ` (${failed} failed: ${lastError})` : ''}. Refreshing table…`,
-        false
-      );
-      setTimeout(() => window.location.reload(), 600);
     }
+
+    // Automatically attach to any running background bulk screening job on page load
+    (async () => {
+      const jobId = getJobId();
+      if (!jobId) return;
+      try {
+        const res = await fetch(`/jobs/${jobId}/applications/ai/bulk-status`);
+        const data = await res.json().catch(() => ({}));
+        if (data && data.ok && data.state && data.state.status === 'running') {
+          pollBulkStatus();
+        }
+      } catch (e) {
+        // ignore
+      }
+    })();
 
     const screenSelectedBtn = document.getElementById('aiScreenSelected');
     if (screenSelectedBtn) {

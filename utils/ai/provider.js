@@ -196,7 +196,11 @@ async function callGemini(opts) {
   throw lastErr;
 }
 
-async function callAnthropic({ model, apiKey, system = SCREEN_SYSTEM, prompt, parts = [] }) {
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+async function callAnthropicOnce({ model, apiKey, system = SCREEN_SYSTEM, prompt, parts = [] }) {
   const content = [];
   for (const part of parts) {
     if (part.type === 'text') {
@@ -232,23 +236,60 @@ async function callAnthropic({ model, apiKey, system = SCREEN_SYSTEM, prompt, pa
 
   if (!res.ok) {
     const message = res.data?.error?.message || `Claude request failed (${res.status})`;
-    throw new Error(message);
+    const err = new Error(message);
+    err.status = res.status;
+    throw err;
   }
   const text = (res.data?.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('');
   if (!text) throw new Error('Claude returned an empty response.');
   return text;
 }
 
-async function complete({ provider, model, apiKey, system = SCREEN_SYSTEM, prompt, parts = [] }) {
-  if (provider === 'anthropic') return callAnthropic({ model, apiKey, system, prompt, parts });
-  return callGemini({ model, apiKey, system, prompt, parts });
+async function callAnthropic(opts) {
+  let lastErr = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      return await callAnthropicOnce(opts);
+    } catch (err) {
+      lastErr = err;
+      const msg = String(err.message || '');
+      const isRateOrOverload =
+        err.status === 429 ||
+        err.status === 529 ||
+        err.status === 503 ||
+        /rate_limit|overloaded|high demand|temporarily/i.test(msg);
+      if (isRateOrOverload && attempt === 0) {
+        await sleep(5000);
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastErr;
 }
 
-async function completeJobAnalysis({ provider, model, apiKey, advert }) {
+async function complete({ provider, model, apiKey, fallback = null, system = SCREEN_SYSTEM, prompt, parts = [] }) {
+  try {
+    if (provider === 'anthropic') return await callAnthropic({ model, apiKey, system, prompt, parts });
+    return await callGemini({ model, apiKey, system, prompt, parts });
+  } catch (primaryErr) {
+    if (fallback && fallback.apiKey) {
+      console.warn(`[AI FALLBACK] Primary provider (${provider}/${model}) failed: ${primaryErr.message}. Falling back to ${fallback.provider}/${fallback.model}…`);
+      if (fallback.provider === 'anthropic') {
+        return await callAnthropic({ model: fallback.model, apiKey: fallback.apiKey, system, prompt, parts });
+      }
+      return await callGemini({ model: fallback.model, apiKey: fallback.apiKey, system, prompt, parts });
+    }
+    throw primaryErr;
+  }
+}
+
+async function completeJobAnalysis({ provider, model, apiKey, fallback = null, advert }) {
   return complete({
     provider,
     model,
     apiKey,
+    fallback,
     system: JOB_ANALYSIS_SYSTEM,
     prompt: analyzeJobPrompt(advert),
     parts: []
