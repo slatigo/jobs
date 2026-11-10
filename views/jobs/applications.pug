@@ -33,9 +33,13 @@ block content
           a.btn.btn-ghost(href=`/jobs/${job.id}/stages`)
             i.fas.fa-layer-group
             | Manage Stages
+          if isAdmin
+            a.btn.btn-ghost(href="/admin/ai" title="Configure Gemini / Claude API keys")
+              i.fas.fa-robot
+              | AI Settings
 
           //- ============================================================
-          //- EXPORT MENU (CSV / PDF)
+          //- EXPORT MENU (CSV / PDF / ZIP / AI EXCEL)
           //- ============================================================
           - const exportQuery = activeFilter && activeFilter !== 'all' ? `?status=${activeFilter}` : ''
           
@@ -61,6 +65,113 @@ block content
                 div
                   strong ZIP
                   span All resumes
+              a.export-item(href=`/jobs/${job.id}/applications/ai/export.xlsx${exportQuery}`)
+                i.fas.fa-file-excel
+                div
+                  strong AI Excel
+                  span Checklist and recommendations
+
+      //- ============================================================
+      //- AI JOB DESCRIPTION UNDERSTANDING & RUBRIC PANEL
+      //- ============================================================
+      - const aiConfigured = aiSettings && aiSettings.activeConfigured
+      - const jdReady = aiJobAnalysis && !aiJobAnalysis.isStale
+      .ai-jd-card#aiJdCard(
+        data-job-id=job.id
+        data-ai-configured=(aiConfigured ? '1' : '0')
+        data-jd-analyzed=(jdReady ? '1' : '0')
+      )
+        .ai-jd-header
+          .ai-jd-title-wrap
+            span.ai-jd-icon
+              i.fas.fa-robot
+            div
+              .ai-jd-heading-row
+                strong AI Job Description Understanding & Shortlisting Rubric
+                span.ai-jd-status#aiJdStatusBadge(class=(jdReady ? 'status-ready' : (aiConfigured ? 'status-pending' : 'status-unconfigured')))
+                  if jdReady
+                    i.fas.fa-check-circle
+                    |  JD Understood (#{aiJobAnalysis.counts.total} criteria)
+                  else if aiConfigured
+                    i.fas.fa-spinner.fa-spin
+                    |  Reading Job Description in background…
+                  else
+                    i.fas.fa-key
+                    |  API Key Needed
+              p.ai-jd-sub#aiJdSummaryText
+                if aiJobAnalysis
+                  = aiJobAnalysis.roleSummary
+                else if aiConfigured
+                  | AI is reading the job advert for "#{job.title}" to extract mandatory qualifications, added advantages, and required documents…
+                else
+                  | Connect a Google Gemini or Anthropic Claude API key to automatically read this Job Description and screen candidate CVs.
+
+          .ai-jd-actions
+            if aiConfigured
+              button.btn.btn-sm.btn-ghost#aiAnalyzeJdBtn(type="button" title="Re-read the job description and refresh the screening checklist")
+                i.fas.fa-sync-alt
+                span= aiJobAnalysis ? 'Refresh JD Rubric' : 'Read JD Now'
+            else if isAdmin
+              a.btn.btn-sm.btn-primary(href="/admin/ai")
+                i.fas.fa-key
+                | Configure AI Key
+
+        //- Summary pills of JD criteria + Candidate AI Judgements
+        .ai-jd-metrics#aiJdMetrics(hidden=!aiJobAnalysis)
+          if aiJobAnalysis
+            .ai-metric-group
+              span.ai-metric-chip.chip-mandatory
+                i.fas.fa-asterisk
+                strong= aiJobAnalysis.counts.mandatory
+                |  Mandatory
+              span.ai-metric-chip.chip-advantage
+                i.fas.fa-plus-circle
+                strong= aiJobAnalysis.counts.advantage
+                |  Added Advantage
+              span.ai-metric-chip.chip-docs
+                i.fas.fa-file-Check
+                strong= aiJobAnalysis.counts.documents
+                |  Required Docs
+          if counts.all > 0 && aiCounts
+            .ai-metric-group.ai-judgement-totals
+              span.ai-summary-pill.pill-pass(title="Candidates meeting all mandatory requirements")
+                i.fas.fa-check-circle
+                |  Pass: 
+                strong#aiCountPass= aiCounts.pass
+              span.ai-summary-pill.pill-hold(title="Candidates needing HR verification or with unclear scans")
+                i.fas.fa-exclamation-circle
+                |  Hold: 
+                strong#aiCountHold= aiCounts.hold
+              span.ai-summary-pill.pill-fail(title="Candidates missing mandatory requirements")
+                i.fas.fa-times-circle
+                |  Fail: 
+                strong#aiCountFail= aiCounts.fail
+              span.ai-summary-pill.pill-unscreened
+                i.fas.fa-clock
+                |  Unscreened: 
+                strong#aiCountUnscreened= aiCounts.unscreened
+
+        details.ai-jd-details#aiJdDetails(hidden=!aiJobAnalysis)
+          summary
+            i.fas.fa-clipboard-check
+            span View Extracted Job Description Checklist Rubric
+            i.fas.fa-chevron-down.ai-jd-caret
+          .ai-jd-rubric-wrap#aiJdRubricBody
+            if aiJobAnalysis && aiJobAnalysis.criteria && aiJobAnalysis.criteria.length
+              table.ai-checklist.ai-jd-table
+                thead
+                  tr
+                    th Category
+                    th Criterion
+                    th Requirement Details from Job Advert
+                tbody
+                  each c in aiJobAnalysis.criteria
+                    tr
+                      td
+                        span.ai-group-tag(class=`group-${c.group.toLowerCase().replace(/\s+/g, '-')}`)= c.group
+                      td
+                        strong= c.criterion
+                      td= c.details || '—'
 
       //- ============================================================
       //- STATUS TABS (built from the job's stages)
@@ -92,6 +203,10 @@ block content
             input(type="checkbox" id="selectAll")
             label(for="selectAll") Select all
             span#selectedCount.selected-count No rows selected
+            if aiCounts && aiCounts.pass > 0
+              button.btn.btn-sm.btn-ghost#aiSelectPassed(type="button" title="Select all candidates judged as Pass by AI")
+                i.fas.fa-check-double(style="color: var(--success);")
+                | Select Pass (#{aiCounts.pass})
 
           .bulk-right
             //- Quick "reject everything in this tab"
@@ -119,6 +234,16 @@ block content
                 i.fas.fa-arrow-right
                 | Apply
 
+            button.btn.btn-sm.btn-ghost(type="button" id="aiScreenSelected" title="Run AI CV screening on checked candidates")
+              i.fas.fa-robot
+              | Screen selected
+            button.btn.btn-sm.btn-ghost(type="button" id="aiScreenList" title="Run AI CV screening on all candidates in this view")
+              i.fas.fa-list-check
+              | Screen all (#{applications ? applications.length : 0})
+            button.btn.btn-sm.btn-ghost(type="button" id="aiApplyMoves" title="Apply pending AI Pass/Fail stage recommendations in bulk")
+              i.fas.fa-check
+              | Apply AI moves
+
       //- ============================================================
       //- APPLICATIONS TABLE
       //- ============================================================
@@ -132,6 +257,7 @@ block content
                 th.th-hide-sm Contact
                 th.th-hide-md Applied
                 th Status
+                th AI Judgement
                 th.th-hide-md CV
                 th.th-actions Actions
 
@@ -140,6 +266,11 @@ block content
                 - const stageDef   = stages.find(s => s.key === a.status)
                 - const stageColor = stageDef ? stageDef.color : 'muted'
                 - const stageLabel = stageDef ? stageDef.label : a.status
+                - const ai = aiByApp && aiByApp[a.id]
+                - const judgeIcons = { pass: 'fa-check-circle', hold: 'fa-exclamation-circle', fail: 'fa-times-circle' }
+                - const recTitles = { advance: 'PASS — Eligible to Advance', hold: 'HOLD / REVIEW — Verification Needed', do_not_advance: 'FAIL — Missing Mandatory Criteria' }
+                - const resultLabels = { met: 'Met', partial: 'Partial', not_met: 'Not met', unclear: 'Unclear', not_applicable: 'N/A' }
+                - const suggested = ai && ai.suggestedStageKey ? stages.find(s => s.key === ai.suggestedStageKey) : null
 
                 //- ============================================================
                 //- MAIN ROW
@@ -151,6 +282,8 @@ block content
                   data-app-email=a.email
                   data-app-status=a.status
                   data-details-id=`details-${a.id}`
+                  data-ai-judgement=(ai ? ai.judgementCode : 'unscreened')
+                  data-ai-recommendation=(ai && ai.hrDecision === 'pending' ? ai.recommendation : '')
                 )
                   td.td-check
                     input.app-checkbox(type="checkbox" value=a.id)
@@ -184,6 +317,29 @@ block content
                       = stageLabel
                       i.fas.fa-chevron-down.pill-caret
 
+                  td.td-ai-judgement
+                    if ai
+                      .ai-judgement-cell
+                        button.ai-rec(
+                          type="button"
+                          class=`ai-rec-${ai.recommendation}`
+                          data-ai-open=a.id
+                          title="Click to view full AI checklist & evidence"
+                        )
+                          i.fas(class=judgeIcons[ai.judgementCode] || 'fa-info-circle')
+                          span.ai-rec-main= ai.judgement
+                          if ai.mandatoryTotal > 0
+                            span.ai-rec-score (#{ai.mandatoryMet}/#{ai.mandatoryTotal})
+                        span.ai-click-hint(data-ai-open=a.id)
+                          if ai.hrDecision !== 'pending'
+                            | HR #{ai.hrDecision} · View details
+                          else
+                            | Click for details
+                    else
+                      button.btn.btn-sm.btn-ghost.ai-screen-trigger(type="button" data-ai-screen=a.id title="Screen CV against Job Description")
+                        i.fas.fa-robot
+                        | Screen CV
+
                   td.th-hide-md
                     if a.attachmentUrl
                       a.btn.btn-sm.btn-ghost(
@@ -198,7 +354,12 @@ block content
 
                   td.td-actions
                     .quick-actions
-                      //- The expand drawer toggle stays — it's unrelated to stage changes
+                      button.icon-btn(
+                        type="button"
+                        title=(ai ? "View AI Judgement & Checklist" : "Screen candidate with AI")
+                        data-ai-open=a.id
+                      )
+                        i.fas.fa-robot
                       button.icon-btn.icon-btn-toggle(
                         type="button"
                         title="Show details"
@@ -210,53 +371,122 @@ block content
                 //- DETAIL DRAWER
                 //- ============================================================
                 tr.app-detail-row(id=`details-${a.id}`)
-                  td(colspan="7")
+                  td(colspan="8")
                     .detail-drawer
+                      .detail-col.ai-panel
+                        .detail-label
+                          i.fas.fa-robot
+                          | AI Shortlisting Assessment & Checklist
+                        if ai
+                          .ai-verdict-banner(class=`verdict-${ai.judgementCode}`)
+                            .ai-verdict-left
+                              i.fas(class=judgeIcons[ai.judgementCode] || 'fa-info-circle')
+                              div
+                                strong= recTitles[ai.recommendation] || ai.judgement
+                                if ai.mandatoryTotal > 0
+                                  span.ai-verdict-sub Mandatory Criteria Met: #{ai.mandatoryMet} of #{ai.mandatoryTotal}
+                            .ai-verdict-right
+                              span.ai-conf-badge= ai.confidence + ' confidence'
+                              span.ai-model-badge= ai.provider + ' · ' + ai.model
+                              if ai.hrDecision !== 'pending'
+                                span.ai-hr-badge HR #{ai.hrDecision}
 
-                      if a.coverLetter
-                        .detail-col
-                          .detail-label
-                            i.fas.fa-comment-alt
-                            | Cover Letter
-                          .detail-body= a.coverLetter
+                          p.ai-summary= ai.summary
 
-                      if a.history && a.history.length
-                        .detail-col
-                          .detail-label
-                            i.fas.fa-history
-                            | History
-                          ul.history-list
-                            each h in a.history
-                              - const toStageDef   = stages.find(s => s.key === h.toStatus)
-                              - const fromStageDef = stages.find(s => s.key === h.fromStatus)
+                          table.ai-checklist
+                            thead
+                              tr
+                                th Category & Requirement
+                                th Result
+                                th Evidence from CV & Submitted Pack
+                            tbody
+                              each item in ai.checklist
+                                tr(class=`ai-result-${item.result}`)
+                                  td
+                                    small.ai-item-group= item.group
+                                    div.ai-item-criterion= item.criterion
+                                  td
+                                    span.ai-result-pill(class=`res-${item.result}`)= resultLabels[item.result] || item.result
+                                  td= item.evidence || '—'
+                          if ai.documentNote
+                            .ai-note
+                              i.fas.fa-file-Signature
+                              div
+                                strong Document & Scan OCR Note: 
+                                span= ai.documentNote
+                          .ai-decide
+                            if ai.hrDecision === 'pending'
+                              if ai.recommendation === 'hold' || !suggested
+                                button.btn.btn-sm.btn-primary(type="button" data-ai-decide="accept" data-app-id=a.id)
+                                  i.fas.fa-check
+                                  | Accept Hold (Keep in #{stageLabel})
+                              else if ai.recommendation === 'advance'
+                                button.btn.btn-sm.btn-success(type="button" data-ai-decide="accept" data-app-id=a.id)
+                                  i.fas.fa-check-circle
+                                  | Approve & Move to #{suggested.label}
+                              else
+                                button.btn.btn-sm.btn-danger(type="button" data-ai-decide="accept" data-app-id=a.id)
+                                  i.fas.fa-times-circle
+                                  | Accept & Move to #{suggested.label}
+                              button.btn.btn-sm.btn-ghost(type="button" data-ai-decide="dismiss" data-app-id=a.id)
+                                i.fas.fa-ban
+                                | Dismiss AI Recommendation
+                            button.btn.btn-sm.btn-ghost(type="button" data-ai-screen=a.id)
+                              i.fas.fa-sync-alt
+                              | Re-screen CV
+                        else
+                          .ai-empty-box
+                            p
+                              strong No AI screening yet for #{a.fullName}.
+                              br
+                              | Clicking below will evaluate #{a.fullName}'s attached CV and academic/ID documents against the Job Description rubric (including OCR for scanned pages) and generate a Pass / Hold / Fail judgement.
+                            button.btn.btn-sm.btn-primary(type="button" data-ai-screen=a.id)
+                              i.fas.fa-robot
+                              | Screen #{a.fullName}'s CV Now
 
-                              li.history-item
-                                .history-line
-                                  span.status-from
-                                    = fromStageDef ? fromStageDef.label : (h.fromStatus || '—')
-                                  i.fas.fa-arrow-right
-                                  span.status-to(class=`status-${toStageDef ? toStageDef.color : 'muted'}`)
-                                    = toStageDef ? toStageDef.label : h.toStatus
+                      .detail-side-col
+                        if a.coverLetter
+                          .detail-col
+                            .detail-label
+                              i.fas.fa-comment-alt
+                              | Cover Letter
+                            .detail-body= a.coverLetter
 
-                                .history-meta
-                                  span
-                                    i.fas.fa-user
-                                    = h.changedBy ? h.changedBy.name : 'System'
-                                  span
-                                    i.fas.fa-clock
-                                    = appTime.format(h.createdAt)
-                                  if h.source && h.source !== 'single'
-                                    span.history-source
-                                      i.fas.fa-layer-group
-                                      = h.source
+                        if a.history && a.history.length
+                          .detail-col(style=(a.coverLetter ? "margin-top: 24px;" : ""))
+                            .detail-label
+                              i.fas.fa-history
+                              | History
+                            ul.history-list
+                              each h in a.history
+                                - const toStageDef   = stages.find(s => s.key === h.toStatus)
+                                - const fromStageDef = stages.find(s => s.key === h.fromStatus)
 
-                                if h.reason
-                                  .history-reason= h.reason
+                                li.history-item
+                                  .history-line
+                                    span.status-from
+                                      = fromStageDef ? fromStageDef.label : (h.fromStatus || '—')
+                                    i.fas.fa-arrow-right
+                                    span.status-to(class=`status-${toStageDef ? toStageDef.color : 'muted'}`)
+                                      = toStageDef ? toStageDef.label : h.toStatus
+
+                                  .history-meta
+                                    span
+                                      i.fas.fa-user
+                                      = h.changedBy ? h.changedBy.name : 'System'
+                                    span
+                                      i.fas.fa-clock
+                                      = appTime.format(h.createdAt)
+                                    if h.source && h.source !== 'single'
+                                      span.history-source
+                                        i.fas.fa-layer-group
+                                        = h.source
+
+                                  if h.reason
+                                    .history-reason= h.reason
 
         //- ==============================================================
         //- PORTALLED STAGE MENUS
-        //- Rendered OUTSIDE the table so they escape the .app-table-wrap
-        //- clipping / stacking context. JS positions them via getBoundingClientRect.
         //- ==============================================================
         each a in applications
           .stage-menu-portal(
@@ -297,5 +527,12 @@ block content
             p No applications with this status.
             a.btn.btn-primary(href=`/jobs/${job.id}/applications`) View All Applications
 
+  .ai-progress(id="aiProgress" hidden)
+    .ai-progress-inner
+      i.fas.fa-spinner.fa-spin#aiProgressIcon
+      p#aiProgressText Screening applications…
+    button.btn.btn-sm.btn-ghost(type="button" id="aiProgressClose") Close
+
 block scripts
   script(src="/js/applications.js" defer)
+  script(src="/js/ai-screen.js" defer)

@@ -1,0 +1,151 @@
+extends ../layout
+
+block content
+  section.page-header
+    .container
+      p.breadcrumb
+        a(href="/") Home
+        span.sep /
+        a(href="/admin") Admin
+        span.sep /
+        span AI Settings
+      h1 AI Shortlisting Settings
+      p Configure Google Gemini or Anthropic Claude API keys and models for automated JD analysis and CV screening
+
+  section.admin-section
+    .container
+      .form-layout
+        .form-main
+          form.form-card(method="POST" action="/admin/ai")
+            h2.section-heading
+              i.fas.fa-robot(style="color: var(--primary); margin-right: 8px;")
+              | Active AI Provider
+
+            .form-group
+              label(for="activeProvider") Select Active Provider for Screening
+              select#activeProvider(name="activeProvider")
+                option(value="gemini" selected=(ai.activeProvider === 'gemini')) Google Gemini (Recommended for multi-page PDF OCR & speed)
+                option(value="anthropic" selected=(ai.activeProvider === 'anthropic')) Anthropic Claude (Sonnet / Haiku / Opus)
+              span.text-muted The active provider will be used when reading Job Descriptions and screening candidate CVs/certificates.
+
+            hr.sidebar-divider
+
+            h2.section-heading
+              i.fas.fa-bolt(style="color: #2563eb; margin-right: 8px;")
+              | Google Gemini Configuration
+
+            .form-row
+              .form-group
+                label(for="geminiModel") Gemini Model ID
+                input#geminiModel(
+                  type="text"
+                  name="geminiModel"
+                  value=ai.geminiModel
+                  list="geminiPresets"
+                  placeholder="gemini-2.5-flash"
+                )
+                datalist#geminiPresets
+                  each m in ai.presets.gemini
+                    option(value=m)
+                span.text-muted Presets: #{ai.presets.gemini.join(', ')}
+
+              .form-group
+                label(for="geminiKey")
+                  | Gemini API Key 
+                  if ai.geminiConfigured
+                    span.pill.pill-success(style="font-size: 11px; margin-left: 6px; padding: 2px 8px;") Configured (#{ai.geminiMask})
+                  else
+                    span.pill.pill-warning(style="font-size: 11px; margin-left: 6px; padding: 2px 8px;") Not set
+                input#geminiKey(
+                  type="password"
+                  name="geminiKey"
+                  autocomplete="new-password"
+                  placeholder=(ai.geminiConfigured ? "Leave blank to keep existing key, or paste new key" : "Paste your AIzaSy... Gemini API key")
+                )
+                if ai.geminiConfigured
+                  label(style="display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; font-weight: 500; font-size: 12px;")
+                    input(type="checkbox" name="clearGemini" value="1" style="width: auto;")
+                    | Clear saved Gemini API key
+
+            hr.sidebar-divider
+
+            h2.section-heading
+              i.fas.fa-brain(style="color: #7c3aed; margin-right: 8px;")
+              | Anthropic Claude Configuration
+
+            .form-row
+              .form-group
+                label(for="anthropicModel") Claude Model ID
+                input#anthropicModel(
+                  type="text"
+                  name="anthropicModel"
+                  value=ai.anthropicModel
+                  list="anthropicPresets"
+                  placeholder="claude-sonnet-4-5"
+                )
+                datalist#anthropicPresets
+                  each m in ai.presets.anthropic
+                    option(value=m)
+                span.text-muted Presets: #{ai.presets.anthropic.join(', ')}
+
+              .form-group
+                label(for="anthropicKey")
+                  | Anthropic API Key 
+                  if ai.anthropicConfigured
+                    span.pill.pill-success(style="font-size: 11px; margin-left: 6px; padding: 2px 8px;") Configured (#{ai.anthropicMask})
+                  else
+                    span.pill.pill-warning(style="font-size: 11px; margin-left: 6px; padding: 2px 8px;") Not set
+                input#anthropicKey(
+                  type="password"
+                  name="anthropicKey"
+                  autocomplete="new-password"
+                  placeholder=(ai.anthropicConfigured ? "Leave blank to keep existing key, or paste new key" : "Paste your sk-ant-... Claude API key")
+                )
+                if ai.anthropicConfigured
+                  label(style="display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; font-weight: 500; font-size: 12px;")
+                    input(type="checkbox" name="clearAnthropic" value="1" style="width: auto;")
+                    | Clear saved Anthropic API key
+
+            .form-actions
+              a.btn.btn-ghost(href="/admin") Back to Admin
+              button.btn.btn-primary(type="submit")
+                i.fas.fa-save
+                | Save AI Settings
+
+        aside.form-sidebar
+          .sidebar-card
+            h3 Test Connection
+            p.sidebar-help Verify that the active provider and model respond properly before screening applications.
+            form(method="POST" action="/admin/ai/test")
+              button.btn.btn-outline.btn-block(type="submit")
+                i.fas.fa-plug
+                | Test Active API Key
+
+            hr.sidebar-divider
+
+            h3 How to Get Your API Keys
+            p.sidebar-help
+              strong 1. Google Gemini (AI Studio):
+              br
+              | Visit 
+              a(href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color: var(--primary); text-decoration: underline;") aistudio.google.com/apikey
+              | , sign in with your Google account, click 
+              strong Create API key
+              | , and paste the key (starts with 
+              code AIza...
+              | ) above.
+
+            p.sidebar-help(style="margin-top: 12px;")
+              strong 2. Anthropic Claude:
+              br
+              | Visit 
+              a(href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener" style="color: var(--primary); text-decoration: underline;") console.anthropic.com/settings/keys
+              | , click 
+              strong Create Key
+              | , and paste the key (starts with 
+              code sk-ant-...
+              | ) above.
+
+            p.sidebar-help(style="margin-top: 12px; margin-bottom: 0;")
+              i.fas.fa-lock(style="color: var(--success); margin-right: 4px;")
+              | Keys are encrypted with AES-256-GCM on this server and never exposed in browser scripts.

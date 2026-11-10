@@ -5,6 +5,9 @@ const Job = require('./Job');
 const JobStage = require('./JobStage');
 const Application = require('./Application');
 const ApplicationStatusHistory = require('./ApplicationStatusHistory');
+const AiSetting = require('./AiSetting');
+const AiScreening = require('./AiScreening');
+const AiJobAnalysis = require('./AiJobAnalysis');
 
 /* ------------------------------------------------------------------ */
 /* Department ↔ Jobs                                                   */
@@ -79,12 +82,29 @@ ApplicationStatusHistory.belongsTo(User, {
   as: 'changedBy'
 });
 
+Application.hasMany(AiScreening, {
+  foreignKey: 'applicationId',
+  as: 'aiScreenings',
+  onDelete: 'CASCADE'
+});
+AiScreening.belongsTo(Application, { foreignKey: 'applicationId', as: 'application' });
+
+Job.hasOne(AiJobAnalysis, {
+  foreignKey: 'jobId',
+  as: 'aiAnalysis',
+  onDelete: 'CASCADE'
+});
+AiJobAnalysis.belongsTo(Job, { foreignKey: 'jobId', as: 'job' });
+
 module.exports = {
   sequelize,
   User,
   Department,
   Job,
-  JobStage,                    // ← export it
+  JobStage,
   Application,
-  ApplicationStatusHistory
+  ApplicationStatusHistory,
+  AiSetting,
+  AiScreening,
+  AiJobAnalysis
 };

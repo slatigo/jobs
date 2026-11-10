@@ -9,6 +9,8 @@ const {
   Department
 } = require('../../models');
 const { isAuthenticated } = require('../../middleware/auth');
+const { latestMap, getJobAnalysis } = require('../../utils/ai/screen');
+const { getSettings, publicSettings } = require('../../utils/ai/settings');
 
 router.get('/', isAuthenticated, async (req, res) => {
   try {
@@ -54,7 +56,7 @@ router.get('/', isAuthenticated, async (req, res) => {
     if (activeFilter !== 'all') where.status = activeFilter;
 
     /* ---- Fetch apps + counts ---- */
-    const [applications, allApplications] = await Promise.all([
+    const [applications, allApplications, aiSettingsRow, aiJobAnalysis] = await Promise.all([
       Application.findAll({
         where,
         include: [
@@ -72,7 +74,9 @@ router.get('/', isAuthenticated, async (req, res) => {
       Application.findAll({
         where: { jobId: job.id },
         attributes: ['status']
-      })
+      }),
+      getSettings(),
+      getJobAnalysis(job, job.department ? job.department.name : '')
     ]);
 
     /* ---- Dynamic counts ---- */
@@ -84,6 +88,18 @@ router.get('/', isAuthenticated, async (req, res) => {
       else counts[a.status] = (counts[a.status] || 0) + 1;
     });
 
+    const aiByApp = await latestMap(applications.map((a) => a.id));
+    const aiSettings = publicSettings(aiSettingsRow);
+
+    const aiCounts = { pass: 0, hold: 0, fail: 0, unscreened: 0 };
+    applications.forEach((a) => {
+      const s = aiByApp[a.id];
+      if (!s) aiCounts.unscreened++;
+      else if (s.recommendation === 'advance') aiCounts.pass++;
+      else if (s.recommendation === 'do_not_advance') aiCounts.fail++;
+      else aiCounts.hold++;
+    });
+
     res.render('jobs/applications', {
       title: `Applications — ${job.title}`,
       job,
@@ -91,7 +107,11 @@ router.get('/', isAuthenticated, async (req, res) => {
       stages,
       counts,
       activeFilter,
-      isAdmin
+      isAdmin,
+      aiByApp,
+      aiCounts,
+      aiJobAnalysis,
+      aiSettings
     });
   } catch (err) {
     console.error('[APPLICATIONS LIST]', err);

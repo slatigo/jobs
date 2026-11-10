@@ -578,4 +578,6 @@ router.get('/applications', isAdmin, async (req, res) => {
   }
 });
 
+router.use('/ai', require('./admin-ai'));
+
 module.exports = router;

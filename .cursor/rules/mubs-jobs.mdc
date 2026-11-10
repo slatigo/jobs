@@ -1,0 +1,36 @@
+---
+description: MUBS Job Portal context — live app, stack, AI shortlisting module, and how to add features
+alwaysApply: true
+---
+
+# MUBS Job Portal
+
+Makerere University Business School job portal. Live at https://jobs.mubs.ac.ug/. Source: https://github.com/slatigo/jobs. This checkout is a local copy of that deployed app. New work is small feature additions on the existing product. Match current patterns. Do not rewrite, restyle the whole site, or change hosting unless asked.
+
+## Stack
+
+CommonJS Node/Express (`app.js`), Pug views, Sequelize + MySQL (MariaDB via XAMPP locally), sessions in the `sessions` table, `connect-flash`, Passport. Logged-in user is `req.session.user` (`id`, `name`, `email`, `role`), set in `routes/auth.js`. Roles: `applicant`, `employer`, `admin`. Guards in `middleware/auth.js`: `isAuthenticated`, `isEmployer` (employer or admin), `isAdmin`.
+
+## Where things live
+
+- Routes mounted in `app.js`: `/`, `/jobs`, `/auth`, `/admin`, `/users`, `/departments`, `/files`, `/j` (short job links).
+- Job routes are split under `routes/jobs/`. Static paths (`my-applications`, `new`) must stay before `/:id`.
+- Application management routes live under `routes/applications/` (`list.js`, `export.js`, `ai.js`, `bulk.js`, `status.js`), mounted at `/jobs/:id/applications`.
+- Admin AI settings live at `routes/admin-ai.js` (mounted at `/admin/ai`) and render `views/admin/ai.pug`.
+- Models in `models/`: `User`, `Department`, `Job`, `JobStage`, `Application`, `ApplicationStatusHistory`, `AiSetting`, `AiJobAnalysis`, `AiScreening`. Associations in `models/index.js`. Tables are underscored with timestamps.
+- AI screening utilities in `utils/ai/`:
+  - `settings.js` & `secrets.js`: AES-256-GCM encrypted API keys for Google Gemini (`gemini-2.5-flash`, `gemini-2.5-pro`) and Anthropic Claude (`claude-sonnet-4-5`, `claude-haiku-4-5`), plus judgement mapping (`Pass` / `Hold / Review` / `Fail`).
+  - `advert.js`: HTML-to-text conversion, SHA-256 advert hashing, and workflow stage helpers.
+  - `prepareDocument.js`: Extracts PDF (native base64 multimodal/OCR), DOCX (Mammoth text + JSZip embedded images), and DOC (`word-extractor`).
+  - `provider.js` & `parseResult.js`: Prompts and JSON parsers for two-step AI shortlisting: (1) reading and understanding the Job Description (`AiJobAnalysis` rubric with `Mandatory`, `Added advantage`, and `Documents submitted` criteria), and (2) screening candidate CVs/packs against that rubric.
+  - `screen.js`: `analyzeJob`, `screenOne`, `decideOne`, and `latestMap`.
+- Views extend `views/layout.pug` and use `block content`. CSS is modular: add rules in `public/css/modules/` and import from `public/css/style.css`. Client JS is `public/js/` (`applications.js`, `ai-screen.js`, `job-form.js`, `main.js`, `modal.js`).
+- Schema changes belong in `migrations/`. Startup calls `sequelize.sync({ alter: false })`, so a new column on an existing table is not created by restarting the app.
+
+## Local runtime
+
+`http://localhost:3000`. Config is `.env` (`DB_NAME=mubsjobs`, XAMPP root with an empty password). Start with `node app.js` after XAMPP MySQL is up. Seeded logins: `admin@mubs.ac.ug` / `admin123`, `hr@mubs.ac.ug` / `employer123`, `applicant@mubs.ac.ug` / `applicant123`. Google sign-in registers only when `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set.
+
+## Working on a live app
+
+Treat the production database and uploads as real. Do not run `db:reset`, drop tables, or `sync({ force: true })`. Prefer an additive migration for schema changes. Keep email, Google OAuth, and mailer behavior intact unless the request is about them. Verify UI changes in the browser at localhost.

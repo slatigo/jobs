@@ -336,8 +336,15 @@ router.post('/reset-password/:token', async (req, res) => {
 /* ================================================================== */
 /* GOOGLE OAUTH — GET /auth/google                                     */
 /* ================================================================== */
+function requireGoogle(req, res, next) {
+  if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) return next();
+  req.flash('error', 'Google sign-in is not configured on this local server. Use email and password.');
+  return res.redirect('/auth/login');
+}
+
 router.get(
   '/google',
+  requireGoogle,
   passport.authenticate('google', {
     scope: ['profile', 'email'],
     prompt: 'select_account'    // always ask which account
@@ -349,6 +356,7 @@ router.get(
 /* ================================================================== */
 router.get(
   '/google/callback',
+  requireGoogle,
   passport.authenticate('google', {
     failureRedirect: '/auth/login',
     failureFlash: 'Google sign-in failed. Please try again.'

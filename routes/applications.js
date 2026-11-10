@@ -7,6 +7,7 @@ const router = express.Router({ mergeParams: true });
 
 router.use('/', require('./applications/list'));
 router.use('/', require('./applications/export'));   // static paths before param paths
+router.use('/', require('./applications/ai'));
 router.use('/', require('./applications/bulk'));
 router.use('/', require('./applications/status'));
 
