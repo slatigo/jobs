@@ -100,9 +100,17 @@ async function saveSettings({ body, userId }) {
 
 const JUDGEMENT_MAP = {
   advance: { code: 'pass', label: 'Pass', sublabel: 'Eligible · Advance', badgeClass: 'ai-judgement-pass' },
-  hold: { code: 'hold', label: 'Hold / Review', sublabel: 'Unclear · Verify', badgeClass: 'ai-judgement-hold' },
+  hold: { code: 'hold', label: 'Review', sublabel: 'Needs checking', badgeClass: 'ai-judgement-hold' },
   do_not_advance: { code: 'fail', label: 'Fail', sublabel: 'Not Eligible', badgeClass: 'ai-judgement-fail' }
 };
+
+function sayReview(text) {
+  if (!text) return text;
+  return String(text)
+    .replace(/hold\s*\/\s*review/gi, 'Review')
+    .replace(/\bon hold\b/gi, 'for review')
+    .replace(/\bhold\b/gi, 'Review');
+}
 
 function present(screening) {
   if (!screening) return null;
@@ -122,9 +130,9 @@ function present(screening) {
     mandatoryMet,
     mandatoryTotal: mandatoryItems.length,
     suggestedStageKey: screening.suggestedStageKey,
-    summary: screening.summary,
+    summary: sayReview(screening.summary),
     checklist,
-    documentNote: screening.documentNote,
+    documentNote: sayReview(screening.documentNote),
     confidence: screening.confidence,
     provider: screening.provider,
     model: screening.model,

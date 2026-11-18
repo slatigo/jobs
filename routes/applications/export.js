@@ -89,7 +89,7 @@ router.get('/export.csv', isAuthenticated, async (req, res) => {
     const ctx = await loadContext(req);
     if (ctx.error) return sendAuthError(req, res, ctx);
 
-    const { job, labelFor, activeFilter, applications } = ctx;
+    const { job, activeFilter, applications } = ctx;
 
     const esc = (v) => {
       if (v == null) return '';
@@ -98,19 +98,14 @@ router.get('/export.csv', isAuthenticated, async (req, res) => {
     };
 
     const header = [
-      'Application ID', 'Full Name', 'Email', 'Phone',
-      'Status', 'Applied At', 'Cover Letter', 'Resume URL'
+      'Full Name', 'Email', 'Phone', 'Applied At'
     ];
 
     const rows = applications.map(a => [
-      a.id,
       a.fullName,
       a.email,
       a.phone || '',
-      labelFor(a.status),
-      a.createdAt ? new Date(a.createdAt).toISOString() : '',
-      a.coverLetter || '',
-      a.attachmentUrl || ''
+      a.createdAt ? new Date(a.createdAt).toISOString() : ''
     ]);
 
     const csv = [header, ...rows].map(r => r.map(esc).join(',')).join('\r\n');
@@ -211,7 +206,7 @@ router.get('/export.pdf', isAuthenticated, async (req, res) => {
          [
            job.department ? job.department.name : null,
            job.jobRef ? `Ref: ${job.jobRef}` : null,
-           `Filter: ${activeFilter === 'all' ? 'All stages' : labelFor(activeFilter)}`,
+           activeFilter === 'all' ? null : `List: ${labelFor(activeFilter)}`,
            `Generated: ${new Date().toISOString().slice(0, 10)}`,
            `${applications.length} application${applications.length === 1 ? '' : 's'}`
          ].filter(Boolean).join('   ·   '),
@@ -223,10 +218,9 @@ router.get('/export.pdf', isAuthenticated, async (req, res) => {
     /* TABLE SETUP                                                      */
     /* ================================================================ */
     const cols = [
-      { key: 'idx',     label: '#',         w: 25,  align: 'right' },
-      { key: 'name',    label: 'Applicant', w: 135, align: 'left'  },
-      { key: 'contact', label: 'Contact',   w: 155, align: 'left'  },
-      { key: 'status',  label: 'Status',    w: 75,  align: 'left'  },
+      { key: 'idx',     label: '#',         w: 28,  align: 'right' },
+      { key: 'name',    label: 'Applicant', w: 170, align: 'left'  },
+      { key: 'contact', label: 'Contact',   w: 190, align: 'left'  },
       { key: 'applied', label: 'Applied',   w: 0,   align: 'right' }
     ];
     const fixedW = cols.slice(0, -1).reduce((s, c) => s + c.w, 0);
@@ -272,24 +266,22 @@ router.get('/export.pdf', isAuthenticated, async (req, res) => {
     /* ROWS                                                             */
     /* ================================================================ */
     applications.forEach((a, i) => {
-      const statusLabel = labelFor(a.status);
-      
-      let applied = '—';
+      let applied = '-';
       if (a.createdAt) {
         const d = new Date(a.createdAt);
         const day = String(d.getDate()).padStart(2, '0');
-        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         applied = `${day} ${months[d.getMonth()]} ${d.getFullYear()}`;
       }
 
       const contact = [a.email, a.phone].filter(Boolean).join('\n');
-      const name = a.fullName || '—';
+      const name = a.fullName || '-';
 
       doc.font('Helvetica').fontSize(9);
-      
+
       const nameH = doc.heightOfString(name, { width: cols[1].w - 12 });
       const contactH = doc.heightOfString(contact, { width: cols[2].w - 12 });
-      const appliedH = doc.heightOfString(applied, { width: cols[4].w - 12 });
+      const appliedH = doc.heightOfString(applied, { width: cols[3].w - 12 });
       
       const maxH = Math.max(nameH, contactH, appliedH, 16);
       const ROW_H = maxH + 14; 
@@ -306,13 +298,7 @@ router.get('/export.pdf', isAuthenticated, async (req, res) => {
 
         const currentX = MARGIN + cols.slice(0, index).reduce((sum, col) => sum + col.w, 0);
 
-        if (c.key === 'status') {
-          const chipW = Math.min(c.w - 12, doc.widthOfString(statusLabel) + 16);
-          doc.roundedRect(currentX + 6, currentY + 6, chipW, 14, 7).fill(C.accentBg);
-          doc.fillColor(C.accent).font('Helvetica-Bold').fontSize(8)
-             .text(statusLabel, currentX + 12, currentY + 9, { width: chipW - 12, lineBreak: false });
-          doc.fillColor(C.ink).font('Helvetica').fontSize(9);
-        } else if (cellVal !== null) {
+        if (cellVal !== null) {
           doc.text(cellVal, currentX + 6, currentY + 6, {
             width: c.w - 12,
             align: c.align,
@@ -358,7 +344,7 @@ router.get('/export.pdf', isAuthenticated, async (req, res) => {
         ensureSpace(blockH);
 
         doc.fillColor(C.ink).font('Helvetica-Bold').fontSize(10)
-           .text(`${a.fullName}   ·   ${labelFor(a.status)}`, MARGIN, currentY, { width: CONTENT_W });
+           .text(a.fullName, MARGIN, currentY, { width: CONTENT_W });
         currentY += 16;
         
         doc.fillColor(C.muted).font('Helvetica').fontSize(8.5)

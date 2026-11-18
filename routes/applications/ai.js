@@ -257,8 +257,8 @@ router.get('/ai/export.xlsx', isAuthenticated, async (req, res) => {
     sheet.addRow(headers);
     sheet.getRow(1).font = { bold: true };
 
-    const recLabels = { advance: 'Advance', hold: 'Hold', do_not_advance: 'Do not advance' };
-    const judgeLabels = { advance: 'PASS (Eligible)', hold: 'HOLD (Review)', do_not_advance: 'FAIL (Not Eligible)' };
+    const recLabels = { advance: 'Advance', hold: 'Review', do_not_advance: 'Do not advance' };
+    const judgeLabels = { advance: 'PASS (Eligible)', hold: 'REVIEW', do_not_advance: 'FAIL (Not Eligible)' };
 
     for (const app of applications) {
       const screening = ai[app.id];

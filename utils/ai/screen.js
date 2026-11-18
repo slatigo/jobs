@@ -163,7 +163,7 @@ async function decideOne({ application, screening, stages, decision, userId }) {
     screening.decidedByUserId = userId;
     screening.decidedAt = new Date();
     await screening.save();
-    return { moved: false, message: 'Recommendation accepted as Hold. No stage change was made.' };
+    return { moved: false, message: 'Recommendation accepted as Review. No stage change was made.' };
   }
 
   const valid = stages.some((s) => s.key === screening.suggestedStageKey);

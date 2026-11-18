@@ -33,6 +33,9 @@ block content
           a.btn.btn-ghost(href=`/jobs/${job.id}/stages`)
             i.fas.fa-layer-group
             | Manage Stages
+          a.btn.btn-primary(href=`/jobs/${job.id}/applications/reports`)
+            i.fas.fa-file-lines
+            | Shortlisting reports
           if isAdmin
             a.btn.btn-ghost(href="/admin/ai" title="Configure Gemini / Claude API keys")
               i.fas.fa-robot
@@ -54,12 +57,12 @@ block content
                 i.fas.fa-file-csv
                 div
                   strong CSV
-                  span Spreadsheet format
+                  span Name, contact and date applied
               a.export-item(href=`/jobs/${job.id}/applications/export.pdf${exportQuery}`)
                 i.fas.fa-file-pdf
                 div
                   strong PDF
-                  span Print-ready report
+                  span Name, contact and date applied
               a.export-item(href=`/jobs/${job.id}/applications/download-zip${exportQuery}`)
                 i.fas.fa-file-archive
                 div
@@ -140,7 +143,7 @@ block content
                 strong#aiCountPass= aiCounts.pass
               span.ai-summary-pill.pill-hold(title="Candidates needing HR verification or with unclear scans")
                 i.fas.fa-exclamation-circle
-                |  Hold: 
+                |  Review: 
                 strong#aiCountHold= aiCounts.hold
               span.ai-summary-pill.pill-fail(title="Candidates missing mandatory requirements")
                 i.fas.fa-times-circle
@@ -268,7 +271,7 @@ block content
                 - const stageLabel = stageDef ? stageDef.label : a.status
                 - const ai = aiByApp && aiByApp[a.id]
                 - const judgeIcons = { pass: 'fa-check-circle', hold: 'fa-exclamation-circle', fail: 'fa-times-circle' }
-                - const recTitles = { advance: 'PASS — Eligible to Advance', hold: 'HOLD / REVIEW — Verification Needed', do_not_advance: 'FAIL — Missing Mandatory Criteria' }
+                - const recTitles = { advance: 'PASS — Eligible to Advance', hold: 'REVIEW — Needs checking', do_not_advance: 'FAIL — Missing Mandatory Criteria' }
                 - const resultLabels = { met: 'Met', partial: 'Partial', not_met: 'Not met', unclear: 'Unclear', not_applicable: 'N/A' }
                 - const suggested = ai && ai.suggestedStageKey ? stages.find(s => s.key === ai.suggestedStageKey) : null
 
@@ -419,7 +422,7 @@ block content
                               if ai.recommendation === 'hold' || !suggested
                                 button.btn.btn-sm.btn-primary(type="button" data-ai-decide="accept" data-app-id=a.id)
                                   i.fas.fa-check
-                                  | Accept Hold (Keep in #{stageLabel})
+                                  | Accept Review (Keep in #{stageLabel})
                               else if ai.recommendation === 'advance'
                                 button.btn.btn-sm.btn-success(type="button" data-ai-decide="accept" data-app-id=a.id)
                                   i.fas.fa-check-circle
@@ -439,7 +442,7 @@ block content
                             p
                               strong No AI screening yet for #{a.fullName}.
                               br
-                              | Clicking below will evaluate #{a.fullName}'s attached CV and academic/ID documents against the Job Description rubric (including OCR for scanned pages) and generate a Pass / Hold / Fail judgement.
+                              | Clicking below will evaluate #{a.fullName}'s attached CV and academic/ID documents against the Job Description rubric (including OCR for scanned pages) and generate a Pass / Review / Fail judgement.
                             button.btn.btn-sm.btn-primary(type="button" data-ai-screen=a.id)
                               i.fas.fa-robot
                               | Screen #{a.fullName}'s CV Now

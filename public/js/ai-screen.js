@@ -561,7 +561,7 @@
         if (typeof window.openConfirmModal === 'function') {
           window.openConfirmModal({
             title: 'Apply AI Shortlisting Recommendations',
-            message: `Apply pending AI stage recommendations for <strong>${actionable.length}</strong> candidate(s)?<br><br>• <strong>${passCount}</strong> Pass (Advance to next stage)<br>• <strong>${failCount}</strong> Fail (Move to Rejected)<br><br>Candidates marked <em>Hold / Review</em> will not be moved automatically.`,
+            message: `Apply pending AI stage recommendations for <strong>${actionable.length}</strong> candidate(s)?<br><br>• <strong>${passCount}</strong> Pass (Advance to next stage)<br>• <strong>${failCount}</strong> Fail (Move to Rejected)<br><br>Candidates marked <em>Review</em> will not be moved automatically.`,
             confirmLabel: `Apply ${actionable.length} AI Move${actionable.length === 1 ? '' : 's'}`,
             tone: 'warning',
             showReason: false,

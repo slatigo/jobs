@@ -76,10 +76,10 @@ const SCREEN_SYSTEM = [
   'Ignore equal-opportunity statements, postal addresses, and how to ask questions.',
   'Decision rules for recommendation:',
   '- "advance" (PASS): ONLY when every Mandatory requirement is met or clearly evidenced.',
-  '- "hold" (HOLD / REVIEW): when Mandatory requirements are mostly met but one or more items or scanned documents are unclear, partial, or require human HR verification.',
+  '- "hold" (REVIEW): when Mandatory requirements are mostly met but one or more items or scanned documents are unclear, partial, or require a person to check them. In the written summary say Review, not Hold.',
   '- "do_not_advance" (FAIL): when one or more Mandatory requirements are clearly missing or not met (e.g. lacks required degree, lacks required professional qualification, below minimum years of experience, outside required age limit).',
   'Return JSON only, with this exact shape:',
-  '{"checklist":[{"group":"Mandatory|Added advantage|Documents submitted|Other","criterion":"","result":"met|partial|not_met|unclear|not_applicable","evidence":"Concrete quote, dates, qualification, or page finding from CV/pack"}],"recommendation":"advance|hold|do_not_advance","summary":"Clear 2-4 sentence executive judgement explaining why the candidate Passed, is on Hold, or Failed","confidence":"high|medium|low","documentNotes":"Notes on attached documents, scan legibility, OCR findings, or missing attachments"}'
+  '{"checklist":[{"group":"Mandatory|Added advantage|Documents submitted|Other","criterion":"","result":"met|partial|not_met|unclear|not_applicable","evidence":"Concrete quote, dates, qualification, or page finding from CV/pack"}],"recommendation":"advance|hold|do_not_advance","summary":"Clear 2-4 sentence executive judgement explaining why the candidate Passed, is for Review, or Failed","confidence":"high|medium|low","documentNotes":"Notes on attached documents, scan legibility, OCR findings, or missing attachments"}'
 ].join(' ');
 
 function analyzeJobPrompt(advert) {

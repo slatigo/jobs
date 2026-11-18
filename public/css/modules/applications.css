@@ -985,3 +985,48 @@
   background: rgba(255, 255, 255, 0.12);
   color: #fff;
 }
+
+/* Shortlisting reports */
+.report-intro {
+  background: #fff;
+  border: 1px solid var(--gray-200, #e5e7eb);
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin-bottom: 18px;
+}
+.report-intro p { margin: 0 0 10px; line-height: 1.55; }
+.report-counts { display: flex; flex-wrap: wrap; gap: 8px; }
+.report-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  font-size: 13px;
+  font-weight: 600;
+}
+.report-pass { background: #dcf5e8; color: #166534; }
+.report-hold { background: #fff4d6; color: #92400e; }
+.report-fail { background: #fde8e8; color: #991b1b; }
+.report-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.report-card {
+  background: #fff;
+  border: 1px solid var(--gray-200, #e5e7eb);
+  border-top: 4px solid #0070b8;
+  border-radius: 10px;
+  padding: 16px;
+}
+.report-card-pass { border-top-color: #166534; }
+.report-card-hold,
+.report-card-review { border-top-color: #b45309; }
+.report-card-fail { border-top-color: #b91c1c; }
+.report-card h2 { font-size: 1.05rem; margin: 0 0 4px; }
+.report-count { font-size: 2rem; font-weight: 700; margin: 0; color: #003a70; }
+.report-note { color: #4a5a6a; font-size: 0.92rem; min-height: 4.2em; }
+.report-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.report-back { margin-top: 8px; }

@@ -1,0 +1,64 @@
+extends ../layout
+
+block content
+  section.page-header
+    .container
+      p.breadcrumb
+        a(href="/jobs") Jobs
+        span.sep /
+        a(href=`/jobs/${job.id}`)= job.title
+        span.sep /
+        a(href=`/jobs/${job.id}/applications`) Applications
+        span.sep /
+        span Shortlisting reports
+      h1 AI shortlisting reports
+      p Reports for "#{job.title}"#{job.jobRef ? ', Ref: ' + job.jobRef : ''}. Prepared for the shortlisting committee and the Appointments Board.
+
+  section.applications-page
+    .container
+      .report-intro
+        p The applicant list itself is only names, contact details and the date applied. It has no stage and no judgement. The four reports below are the shortlisting reading: who passed, who is for review, who did not meet a mandatory requirement, and the whole list with the reason for each person.
+        p.report-counts
+          span.report-pill.report-pass Pass: #{counts.pass}
+          span.report-pill.report-hold Review: #{counts.review}
+          span.report-pill.report-fail Fail: #{counts.fail}
+          span.report-pill Not screened: #{counts.unscreened}
+
+      .report-grid
+        article.report-card
+          h2 All applicants
+          p.report-count= counts.all
+          p.report-note Names, email, telephone and the date each person applied. No stage, and no pass, review or fail.
+          .report-actions
+            a.btn.btn-primary(href=`/jobs/${job.id}/applications/export.pdf`)
+              i.fas.fa-file-pdf
+              |  PDF
+            a.btn.btn-ghost(href=`/jobs/${job.id}/applications/export.csv`)
+              i.fas.fa-file-csv
+              |  CSV
+
+        each group in groups
+          article.report-card(class=`report-card-${group.key}`)
+            h2= group.title
+            p.report-count= group.count
+            p.report-note
+              if group.key === 'pass'
+                | Applicants for whom every mandatory requirement was found in the pack, with the reason and the requirement-by-requirement reading.
+              else if group.key === 'review'
+                | Applicants the module could not clear. A certificate, a date, or a scan still needs an officer.
+              else if group.key === 'fail'
+                | Applicants who did not meet at least one mandatory requirement, with the reason they did not meet it.
+              else
+                | Every applicant, with the judgement and the reason, including anyone not yet screened.
+            .report-actions
+              a.btn.btn-primary(href=`/jobs/${job.id}/applications/reports/${group.key}.xlsx`)
+                i.fas.fa-file-excel
+                |  Excel
+              a.btn.btn-ghost(href=`/jobs/${job.id}/applications/reports/${group.key}.pdf`)
+                i.fas.fa-file-pdf
+                |  PDF
+
+      p.report-back
+        a.btn.btn-ghost(href=`/jobs/${job.id}/applications`)
+          i.fas.fa-arrow-left
+          |  Back to applications
