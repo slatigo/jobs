@@ -238,20 +238,20 @@ router.get('/ai/export.xlsx', isAuthenticated, async (req, res) => {
     }
 
     const workbook = new ExcelJS.Workbook();
-    const sheet = workbook.addWorksheet('AI Shortlisting Report');
+    const sheet = workbook.addWorksheet('Shortlisting Report');
     const headers = [
       'Applicant',
       'Email',
       'Phone',
       'Current Stage',
-      'AI Judgement',
+      'Judgement',
       'Recommendation',
       'Mandatory Criteria Met',
       'Suggested Next Stage',
       'Confidence',
       'HR Decision',
-      'AI Executive Summary',
-      'Document / OCR Notes',
+      'Executive Summary',
+      'Document / Scan Notes',
       ...criteria
     ];
     sheet.addRow(headers);
@@ -288,12 +288,12 @@ router.get('/ai/export.xlsx', isAuthenticated, async (req, res) => {
     sheet.columns.forEach((col) => { col.width = 28; });
     const safe = String(job.jobRef || job.id).replace(/[^\w.-]+/g, '_');
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename="ai-screening-${safe}.xlsx"`);
+    res.setHeader('Content-Disposition', `attachment; filename="shortlisting-matrix-${safe}.xlsx"`);
     await workbook.xlsx.write(res);
     res.end();
   } catch (err) {
     console.error('[AI EXPORT]', err.message);
-    if (!res.headersSent) res.status(500).send('Could not export the AI report.');
+    if (!res.headersSent) res.status(500).send('Could not export the shortlisting report.');
   }
 });
 

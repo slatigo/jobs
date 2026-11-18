@@ -28,9 +28,9 @@ function buildPdf({ job, people, counts, groupKey, stream }) {
     bufferPages: true,
     margins: { top: 36, bottom: 0, left: 36, right: 36 },
     info: {
-      Title: `AI shortlisting report: ${group.short} - ${job.title}`,
+      Title: `Shortlisting Report: ${group.short} - ${job.title}`,
       Author: 'Makerere University Business School, Human Resource Directorate',
-      Subject: 'AI shortlisting report'
+      Subject: 'Shortlisting Report'
     }
   });
   doc.pipe(stream);
@@ -56,7 +56,7 @@ function buildPdf({ job, people, counts, groupKey, stream }) {
       .moveTo(M, top + 30).lineTo(M + contentW(), top + 30).stroke();
     if (!compact) {
       doc.fillColor(INK).font('Helvetica-Bold').fontSize(12)
-        .text(`AI shortlisting report: ${group.title}`, M, top + 38, { width: contentW(), align: 'center' });
+        .text(`Shortlisting Report: ${group.title}`, M, top + 38, { width: contentW(), align: 'center' });
       doc.fillColor(MUTED).font('Helvetica').fontSize(8)
         .text([
           job.title,
@@ -76,7 +76,7 @@ function buildPdf({ job, people, counts, groupKey, stream }) {
     .text('Summary for the committee', M, y, { width: contentW() });
   y = doc.y + 4;
   doc.fillColor(INK).font('Helvetica').fontSize(9)
-    .text('Each row is the module\'s reading of the advertisement against the application pack. The reason states why the person passed, is for review, or did not meet a requirement.', M, y, { width: contentW() });
+    .text('Each row sets out the reading of the advertisement against the application pack. The reason states why the person passed, is for review, or did not meet a requirement.', M, y, { width: contentW() });
   y = doc.y + 8;
 
   const boxes = [

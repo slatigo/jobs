@@ -132,7 +132,7 @@ async function buildWorkbook({ job, people, counts, groupKey }) {
     views: [{ state: 'frozen', ySplit: 12, showGridLines: false }]
   });
 
-  applyHeader(summary, 9, `AI shortlisting report: ${group.short}`, subtitle);
+  applyHeader(summary, 9, `Shortlisting Report: ${group.title}`, subtitle);
   summary.getRow(5).height = 8;
 
   summary.getCell('A6').value = 'Reading of this list';
@@ -146,7 +146,7 @@ async function buildWorkbook({ job, people, counts, groupKey }) {
     pageSetup: { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 1 },
     views: [{ showGridLines: false }]
   });
-  applyHeader(analysis, 4, 'Analysis of AI judgements', subtitle);
+  applyHeader(analysis, 4, 'Analysis of shortlisting judgements', subtitle);
   analysis.getColumn(1).width = 28;
   analysis.getColumn(2).width = 16;
   analysis.getColumn(3).width = 16;
