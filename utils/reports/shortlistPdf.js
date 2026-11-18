@@ -30,7 +30,7 @@ function buildPdf({ job, people, counts, groupKey, stream }) {
     info: {
       Title: `AI shortlisting report: ${group.short} - ${job.title}`,
       Author: 'Makerere University Business School, Human Resource Directorate',
-      Subject: 'AI shortlisting report for the Appointments Board'
+      Subject: 'AI shortlisting report'
     }
   });
   doc.pipe(stream);
@@ -76,7 +76,7 @@ function buildPdf({ job, people, counts, groupKey, stream }) {
     .text('Summary for the committee', M, y, { width: contentW() });
   y = doc.y + 4;
   doc.fillColor(INK).font('Helvetica').fontSize(9)
-    .text('The figures below are the AI module\'s reading of the advertisement against the application packs. They are placed before the committee so that members can agree or disagree with each judgement. They are not themselves the decision of the Appointments Board.', M, y, { width: contentW() });
+    .text('Each row is the module\'s reading of the advertisement against the application pack. The reason states why the person passed, is for review, or did not meet a requirement.', M, y, { width: contentW() });
   y = doc.y + 8;
 
   const boxes = [

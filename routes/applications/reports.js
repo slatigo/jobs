@@ -30,16 +30,26 @@ router.get('/reports', isAuthenticated, async (req, res) => {
   try {
     const pack = await context(req, res);
     if (!pack) return;
-    const groups = ['pass', 'review', 'fail', 'all'].map((key) => {
-      const group = GROUPS[key];
-      const rows = peopleInGroup(pack.people, key);
-      return { ...group, count: rows.length };
-    });
+    const allowed = ['list', 'pass', 'review', 'fail', 'all'];
+    const requested = String(req.query.view || 'pass').toLowerCase();
+    const view = allowed.includes(requested) ? requested : 'pass';
+    const people = view === 'list'
+      ? pack.people.slice().sort((a, b) => a.fullName.localeCompare(b.fullName))
+      : peopleInGroup(pack.people, view);
+    const titles = {
+      list: 'All applicants',
+      pass: 'Candidates who passed',
+      review: 'Candidates for review',
+      fail: 'Candidates who did not meet the requirements',
+      all: 'All candidates'
+    };
     res.render('jobs/shortlisting-reports', {
-      title: `Shortlisting reports - ${pack.job.title}`,
+      title: `Shortlisting report - ${pack.job.title}`,
       job: pack.job,
       counts: pack.counts,
-      groups
+      view,
+      viewTitle: titles[view],
+      people
     });
   } catch (err) {
     console.error('[SHORTLIST REPORTS]', err);

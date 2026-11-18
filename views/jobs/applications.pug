@@ -73,6 +73,46 @@ block content
                 div
                   strong AI Excel
                   span Checklist and recommendations
+              .export-label Shortlisting reports
+              a.export-item(href=`/jobs/${job.id}/applications/reports?view=pass`)
+                i.fas.fa-file-lines
+                div
+                  strong Passed
+                  span Open the report
+              a.export-item(href=`/jobs/${job.id}/applications/reports/pass.xlsx`)
+                i.fas.fa-file-excel
+                div
+                  strong Passed, Excel
+                  span Summary, analysis and each candidate
+              a.export-item(href=`/jobs/${job.id}/applications/reports/pass.pdf`)
+                i.fas.fa-file-pdf
+                div
+                  strong Passed, PDF
+                  span Summary and each candidate
+              a.export-item(href=`/jobs/${job.id}/applications/reports/review.xlsx`)
+                i.fas.fa-file-excel
+                div
+                  strong Review, Excel
+              a.export-item(href=`/jobs/${job.id}/applications/reports/review.pdf`)
+                i.fas.fa-file-pdf
+                div
+                  strong Review, PDF
+              a.export-item(href=`/jobs/${job.id}/applications/reports/fail.xlsx`)
+                i.fas.fa-file-excel
+                div
+                  strong Did not meet, Excel
+              a.export-item(href=`/jobs/${job.id}/applications/reports/fail.pdf`)
+                i.fas.fa-file-pdf
+                div
+                  strong Did not meet, PDF
+              a.export-item(href=`/jobs/${job.id}/applications/reports/all.xlsx`)
+                i.fas.fa-file-excel
+                div
+                  strong All candidates, Excel
+              a.export-item(href=`/jobs/${job.id}/applications/reports/all.pdf`)
+                i.fas.fa-file-pdf
+                div
+                  strong All candidates, PDF
 
       //- ============================================================
       //- AI JOB DESCRIPTION UNDERSTANDING & RUBRIC PANEL

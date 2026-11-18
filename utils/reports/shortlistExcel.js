@@ -141,10 +141,10 @@ async function buildWorkbook({ job, people, counts, groupKey }) {
   applyHeader(summary, 8, `AI shortlisting report: ${group.short}`, subtitle);
   summary.getRow(5).height = 8;
 
-  summary.getCell('A6').value = 'For the shortlisting committee';
+  summary.getCell('A6').value = 'Reading of this list';
   summary.getCell('A6').font = { name: 'Calibri', size: 12, bold: true, color: { argb: NAVY } };
   summary.mergeCells('A7:H8');
-  summary.getCell('A7').value = 'This workbook sets out the AI module\'s reading of the vacancy advertisement against each application pack in this group. The summary gives the judgement and the reason. Each following sheet sets out one candidate against the requirements taken from the advertisement. The module does not appoint or reject. The committee decides.';
+  summary.getCell('A7').value = 'This workbook sets out the reading of the vacancy advertisement against each application pack in this group. The summary gives the judgement and the reason. Each following sheet sets out one candidate against the requirements taken from the advertisement.';
   summary.getCell('A7').alignment = { wrapText: true, vertical: 'top' };
   summary.getCell('A7').font = { name: 'Calibri', size: 11, color: { argb: INK } };
 
