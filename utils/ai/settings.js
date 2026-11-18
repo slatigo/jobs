@@ -112,10 +112,25 @@ function sayReview(text) {
     .replace(/\bhold\b/gi, 'Review');
 }
 
+function plainSpeech(text) {
+  if (!text) return text;
+  return sayReview(text)
+    .replace(/[—–]/g, ',')
+    .replace(/\s+,/g, ',')
+    .replace(/,{2,}/g, ',')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
 function present(screening) {
   if (!screening) return null;
   let checklist = [];
   try { checklist = JSON.parse(screening.checklistJson); } catch (err) { checklist = []; }
+
+  checklist = checklist.map((item) => ({
+    ...item,
+    evidence: plainSpeech(item.evidence)
+  }));
 
   const mandatoryItems = checklist.filter((i) => i.group === 'Mandatory');
   const mandatoryMet = mandatoryItems.filter((i) => i.result === 'met').length;
@@ -130,9 +145,9 @@ function present(screening) {
     mandatoryMet,
     mandatoryTotal: mandatoryItems.length,
     suggestedStageKey: screening.suggestedStageKey,
-    summary: sayReview(screening.summary),
+    summary: plainSpeech(screening.summary),
     checklist,
-    documentNote: sayReview(screening.documentNote),
+    documentNote: plainSpeech(screening.documentNote),
     confidence: screening.confidence,
     provider: screening.provider,
     model: screening.model,

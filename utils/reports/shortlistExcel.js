@@ -1,5 +1,4 @@
 const ExcelJS = require('exceljs');
-const path = require('path');
 const { GROUPS } = require('./shortlistData');
 
 const BLUE = 'FF0070B8';
@@ -73,19 +72,6 @@ function applyHeader(sheet, lastCol, title, subtitle) {
     sheet.getCell(1, col).fill = fill(BLUE);
     sheet.getCell(2, col).fill = fill(GOLD);
   }
-
-  try {
-    if (sheet.workbook.__mubsLogoId == null) {
-      const logo = path.join(__dirname, '../../public/images/logo.png');
-      sheet.workbook.__mubsLogoId = sheet.workbook.addImage({ filename: logo, extension: 'png' });
-    }
-    sheet.addImage(sheet.workbook.__mubsLogoId, {
-      tl: { col: lastCol - 1, row: 0 },
-      ext: { width: 46, height: 46 }
-    });
-  } catch (err) {
-    /* logo is optional */
-  }
 }
 
 function styleHeaderRow(row) {
@@ -96,6 +82,14 @@ function styleHeaderRow(row) {
     cell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
     cell.border = thinBorder();
   });
+}
+
+function documentUrl(person) {
+  if (!person.attachmentUrl) return '';
+  const file = String(person.attachmentUrl).split('/').pop();
+  if (!file) return '';
+  const base = (process.env.APP_URL || 'https://jobs.mubs.ac.ug').replace(/\/$/, '');
+  return `${base}/files/resumes/${encodeURIComponent(file)}`;
 }
 
 function sheetName(index, name) {
@@ -138,12 +132,12 @@ async function buildWorkbook({ job, people, counts, groupKey }) {
     views: [{ state: 'frozen', ySplit: 12, showGridLines: false }]
   });
 
-  applyHeader(summary, 8, `AI shortlisting report: ${group.short}`, subtitle);
+  applyHeader(summary, 9, `AI shortlisting report: ${group.short}`, subtitle);
   summary.getRow(5).height = 8;
 
   summary.getCell('A6').value = 'Reading of this list';
   summary.getCell('A6').font = { name: 'Calibri', size: 12, bold: true, color: { argb: NAVY } };
-  summary.mergeCells('A7:H8');
+  summary.mergeCells('A7:I8');
   summary.getCell('A7').value = 'This workbook sets out the reading of the vacancy advertisement against each application pack in this group. The summary gives the judgement and the reason. Each following sheet sets out one candidate against the requirements taken from the advertisement.';
   summary.getCell('A7').alignment = { wrapText: true, vertical: 'top' };
   summary.getCell('A7').font = { name: 'Calibri', size: 11, color: { argb: INK } };
@@ -194,34 +188,43 @@ async function buildWorkbook({ job, people, counts, groupKey }) {
   analysis.getCell('A13').alignment = { wrapText: true, vertical: 'top' };
   analysis.getCell('A13').font = { name: 'Calibri', size: 11 };
 
-  const headers = ['No.', 'Applicant', 'Email', 'Phone', 'Judgement', 'Mandatory score', 'Confidence', 'Reason'];
+  const headers = ['No.', 'Applicant', 'Email', 'Phone', 'Application document', 'Judgement', 'Mandatory score', 'Confidence', 'Reason'];
   const head = summary.getRow(12);
   head.values = headers;
   styleHeaderRow(head);
-  summary.autoFilter = { from: 'A12', to: 'H12' };
+  summary.autoFilter = { from: 'A12', to: 'I12' };
   summary.views = [{ state: 'frozen', ySplit: 12, showGridLines: false }];
 
-  const widths = [6, 28, 34, 18, 18, 18, 14, 72];
+  const widths = [6, 28, 34, 18, 36, 16, 18, 14, 72];
   widths.forEach((w, i) => { summary.getColumn(i + 1).width = w; });
 
   people.forEach((person, index) => {
     const row = summary.getRow(13 + index);
+    const fileUrl = documentUrl(person);
     row.values = [
       index + 1,
       person.fullName,
       person.email,
       person.phone,
+      fileUrl ? (person.attachmentName || 'Application document') : '',
       person.judgement,
       person.scoreLabel,
       person.confidence ? person.confidence.charAt(0).toUpperCase() + person.confidence.slice(1) : '',
       person.summary
     ];
+    if (fileUrl) {
+      row.getCell(5).value = { text: person.attachmentName || 'Application document', hyperlink: fileUrl };
+      row.getCell(5).font = { name: 'Calibri', size: 11, color: { argb: 'FF0070B8' }, underline: true };
+    }
     row.font = { name: 'Calibri', size: 11, color: { argb: INK } };
     row.alignment = { vertical: 'top', wrapText: true };
     row.height = Math.min(90, Math.max(22, Math.ceil(String(person.summary || '').length / 90) * 16));
     row.eachCell((cell, col) => {
       cell.border = thinBorder();
-      if (col === 5) {
+      if (col === 5 && fileUrl) {
+        cell.font = { name: 'Calibri', size: 11, color: { argb: 'FF0070B8' }, underline: true };
+      }
+      if (col === 6) {
         cell.fill = fill(judgementFill(person.judgementCode));
         cell.font = { name: 'Calibri', size: 11, bold: true };
       }
@@ -229,7 +232,7 @@ async function buildWorkbook({ job, people, counts, groupKey }) {
   });
 
   if (!people.length) {
-    summary.mergeCells('A13:H13');
+    summary.mergeCells('A13:I13');
     summary.getCell('A13').value = 'No applicants in this group.';
     summary.getCell('A13').font = { name: 'Calibri', size: 12, italic: true, color: { argb: MUTED } };
   }
@@ -267,8 +270,10 @@ async function buildWorkbook({ job, people, counts, groupKey }) {
       ['Judgement', person.judgement],
       ['Mandatory score', person.scoreLabel || 'Not screened'],
       ['Confidence', person.confidence || ''],
-      ['Officer decision on the recommendation', person.hrDecision || 'Pending']
+      ['Officer decision on the recommendation', person.hrDecision || 'Pending'],
+      ['Application document', person.attachmentName || '']
     ];
+    const fileUrl = documentUrl(person);
     facts.forEach((pair, i) => {
       const row = sheet.getRow(6 + i);
       row.getCell(1).value = pair[0];
@@ -276,29 +281,38 @@ async function buildWorkbook({ job, people, counts, groupKey }) {
       row.getCell(2).value = pair[1];
       row.getCell(2).font = { name: 'Calibri', size: 11 };
       row.height = 18;
+      if (pair[0] === 'Application document' && fileUrl) {
+        row.getCell(2).value = { text: person.attachmentName || 'Open application document', hyperlink: fileUrl };
+        row.getCell(2).font = { name: 'Calibri', size: 11, color: { argb: 'FF0070B8' }, underline: true };
+      }
     });
 
-    sheet.mergeCells('A14:D16');
-    sheet.getCell('A14').value = person.summary;
-    sheet.getCell('A14').alignment = { wrapText: true, vertical: 'top' };
-    sheet.getCell('A14').font = { name: 'Calibri', size: 11 };
-    sheet.getCell('A13').value = 'Summary';
-    sheet.getCell('A13').font = { name: 'Calibri', size: 12, bold: true, color: { argb: NAVY } };
+    sheet.getCell('A15').value = 'Summary';
+    sheet.getCell('A15').font = { name: 'Calibri', size: 12, bold: true, color: { argb: NAVY } };
+    sheet.mergeCells('A16:D18');
+    sheet.getCell('A16').value = person.summary;
+    sheet.getCell('A16').alignment = { wrapText: true, vertical: 'top' };
+    sheet.getCell('A16').font = { name: 'Calibri', size: 11 };
+    sheet.getRow(16).height = 22;
+    sheet.getRow(17).height = 22;
+    sheet.getRow(18).height = 22;
 
     if (person.documentNote) {
-      sheet.getCell('A17').value = 'Documents and scans';
-      sheet.getCell('A17').font = { name: 'Calibri', size: 12, bold: true, color: { argb: NAVY } };
-      sheet.mergeCells('A18:D19');
-      sheet.getCell('A18').value = person.documentNote;
-      sheet.getCell('A18').alignment = { wrapText: true, vertical: 'top' };
-      sheet.getCell('A18').font = { name: 'Calibri', size: 11 };
+      sheet.getCell('A19').value = 'Documents and scans';
+      sheet.getCell('A19').font = { name: 'Calibri', size: 12, bold: true, color: { argb: NAVY } };
+      sheet.mergeCells('A20:D21');
+      sheet.getCell('A20').value = person.documentNote;
+      sheet.getCell('A20').alignment = { wrapText: true, vertical: 'top' };
+      sheet.getCell('A20').font = { name: 'Calibri', size: 11 };
+      sheet.getRow(20).height = 20;
+      sheet.getRow(21).height = 20;
     }
 
-    const tableStart = person.documentNote ? 21 : 18;
+    const tableStart = person.documentNote ? 23 : 20;
     const tableHead = sheet.getRow(tableStart);
     tableHead.values = ['Category', 'Requirement from the advertisement', 'Result', 'Evidence from the application pack'];
     styleHeaderRow(tableHead);
-    sheet.views = [{ state: 'frozen', ySplit: tableStart, showGridLines: false }];
+    sheet.views = [{ state: 'normal', showGridLines: true, topLeftCell: 'A1' }];
 
     if (!person.checklist.length) {
       sheet.mergeCells(tableStart + 1, 1, tableStart + 1, 4);

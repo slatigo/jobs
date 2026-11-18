@@ -50,6 +50,8 @@ async function loadShortlist(jobId) {
       email: app.email,
       phone: app.phone || '',
       applied: formatDate(app.createdAt),
+      attachmentUrl: app.attachmentUrl || '',
+      attachmentName: app.attachmentName || '',
       recommendation: screening ? screening.recommendation : null,
       judgement: screening ? screening.judgement : 'Not screened',
       judgementCode: screening ? screening.judgementCode : 'unscreened',

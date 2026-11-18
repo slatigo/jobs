@@ -1034,8 +1034,37 @@
   line-height: 1.45;
   font-size: 13px;
 }
+.report-table {
+  table-layout: auto;
+}
+.report-table .col-no { width: 48px; }
+.report-table .col-name { min-width: 180px; }
+.report-table .col-contact { min-width: 220px; }
+.report-table .col-phone { min-width: 140px; }
+.report-table .col-date { width: 120px; white-space: nowrap; }
+.report-table .col-file { min-width: 180px; }
+.report-table .col-score { width: 80px; white-space: nowrap; }
+.report-table .col-judge { width: 110px; }
 .report-table td {
   vertical-align: top;
+}
+.report-person td {
+  border-bottom: none;
+  padding-bottom: 6px;
+}
+.report-detail td {
+  padding-top: 0;
+  background: #f8fafc;
+}
+.report-reason {
+  margin: 0 0 6px;
+  line-height: 1.5;
+  font-size: 13.5px;
+}
+.report-file {
+  color: var(--primary);
+  font-weight: 600;
+  word-break: break-word;
 }
 .report-criteria {
   margin-top: 8px;

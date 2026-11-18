@@ -78,6 +78,11 @@ const SCREEN_SYSTEM = [
   '- "advance" (PASS): ONLY when every Mandatory requirement is met or clearly evidenced.',
   '- "hold" (REVIEW): when Mandatory requirements are mostly met but one or more items or scanned documents are unclear, partial, or require a person to check them. In the written summary say Review, not Hold.',
   '- "do_not_advance" (FAIL): when one or more Mandatory requirements are clearly missing or not met (e.g. lacks required degree, lacks required professional qualification, below minimum years of experience, outside required age limit).',
+  'Writing rules for summary, documentNotes, and evidence:',
+  'Write formal, plain English, as an officer minuting a file. Short sentences. State the fact, then where it was found in the pack.',
+  'Do not use an em dash or an en dash anywhere. Use a comma, a full stop, a colon, or brackets.',
+  'Do not use stock phrases such as pivotal, underscores, testament, landscape, robust, comprehensive, delve, furthermore, or moreover.',
+  'Do not praise the candidate. Record what the document shows.',
   'Return JSON only, with this exact shape:',
   '{"checklist":[{"group":"Mandatory|Added advantage|Documents submitted|Other","criterion":"","result":"met|partial|not_met|unclear|not_applicable","evidence":"Concrete quote, dates, qualification, or page finding from CV/pack"}],"recommendation":"advance|hold|do_not_advance","summary":"Clear 2-4 sentence executive judgement explaining why the candidate Passed, is for Review, or Failed","confidence":"high|medium|low","documentNotes":"Notes on attached documents, scan legibility, OCR findings, or missing attachments"}'
 ].join(' ');
@@ -94,9 +99,9 @@ function analyzeJobPrompt(advert) {
 function userPrompt({ advert, jobAnalysis, applicant, stageLabel, nextLabel }) {
   const rubricLines = jobAnalysis && Array.isArray(jobAnalysis.criteria) && jobAnalysis.criteria.length
     ? [
-        'STRUCTURED JOB SCREENING RUBRIC (Extracted from Job Description — evaluate each item below):',
+        'STRUCTURED JOB SCREENING RUBRIC (extracted from the job description; evaluate each item below):',
         `Role Summary: ${jobAnalysis.roleSummary}`,
-        ...jobAnalysis.criteria.map((c, idx) => `${idx + 1}. [${c.group}] ${c.criterion}${c.details ? ` — ${c.details}` : ''}`),
+        ...jobAnalysis.criteria.map((c, idx) => `${idx + 1}. [${c.group}] ${c.criterion}${c.details ? `: ${c.details}` : ''}`),
         ''
       ]
     : [];
@@ -112,7 +117,7 @@ function userPrompt({ advert, jobAnalysis, applicant, stageLabel, nextLabel }) {
     'APPLICANT DETAILS',
     `Name: ${applicant.fullName}`,
     `Email: ${applicant.email}`,
-    `Phone: ${applicant.phone || '—'}`,
+    `Phone: ${applicant.phone || 'not given'}`,
     applicant.coverLetter ? `Cover letter:\n${String(applicant.coverLetter).slice(0, 8000)}` : 'Cover letter: none provided in form (check attached pack for application letter)',
     '',
     'The attached file is the applicant\'s submitted document pack (CV and any academic certificates, transcripts, clearances, or ID pages). Read every page carefully, including scanned images, and return your structured JSON assessment.'

@@ -216,7 +216,7 @@ function buildPdf({ job, people, counts, groupKey, stream }) {
       .text(`${person.judgement}${person.scoreLabel ? '   |   Mandatory requirements met: ' + person.scoreLabel : ''}${person.confidence ? '   |   Confidence: ' + person.confidence : ''}`, PM, cy, { width: pw });
     cy = doc.y + 2;
     doc.fillColor(MUTED).font('Helvetica').fontSize(9)
-      .text([person.email, person.phone, person.applied ? 'Applied ' + person.applied : ''].filter(Boolean).join('   |   '), PM, cy, { width: pw });
+      .text([person.email, person.phone, person.applied ? 'Applied ' + person.applied : '', person.attachmentName ? 'Document: ' + person.attachmentName : ''].filter(Boolean).join('   |   '), PM, cy, { width: pw });
     cy = doc.y + 8;
     doc.fillColor(INK).font('Helvetica').fontSize(9)
       .text(person.summary || '', PM, cy, { width: pw });
@@ -284,12 +284,24 @@ function buildPdf({ job, people, counts, groupKey, stream }) {
   });
 
   const range = doc.bufferedPageRange();
-  for (let p = range.start; p < range.start + range.count; p++) {
+  const pageTotal = range.count;
+  for (let p = range.start; p < range.start + pageTotal; p++) {
     doc.switchToPage(p);
-    const footerY = doc.page.height - 28;
-    doc.fillColor(MUTED).font('Helvetica').fontSize(8)
-      .text('Makerere University Business School  |  Human Resource Directorate', M, footerY, { width: doc.page.width - M * 2, align: 'left' })
-      .text(`Page ${p - range.start + 1} of ${range.count}`, M, footerY, { width: doc.page.width - M * 2, align: 'right' });
+    const footerY = doc.page.height - 22;
+    const width = doc.page.width - M * 2;
+    doc.fillColor(MUTED).font('Helvetica').fontSize(8);
+    doc.text('Makerere University Business School  |  Human Resource Directorate', M, footerY, {
+      width: width * 0.72,
+      height: 12,
+      lineBreak: false,
+      ellipsis: true
+    });
+    doc.text(`Page ${p - range.start + 1} of ${pageTotal}`, M, footerY, {
+      width,
+      height: 12,
+      align: 'right',
+      lineBreak: false
+    });
   }
 
   doc.end();

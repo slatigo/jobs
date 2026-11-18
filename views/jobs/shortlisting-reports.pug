@@ -44,21 +44,34 @@ block content
               | #{people.length} applicant#{people.length === 1 ? '' : 's'}, with the judgement and the reason.
             if counts.unscreened && view === 'all'
               |  #{counts.unscreened} not yet screened.
-        .report-exports
-          if view === 'list'
-            a.btn.btn-ghost(href=`/jobs/${job.id}/applications/export.pdf`)
-              i.fas.fa-file-pdf
-              |  PDF
-            a.btn.btn-ghost(href=`/jobs/${job.id}/applications/export.csv`)
-              i.fas.fa-file-csv
-              |  CSV
-          else
-            a.btn.btn-ghost(href=`/jobs/${job.id}/applications/reports/${view}.xlsx`)
-              i.fas.fa-file-excel
-              |  Excel
-            a.btn.btn-ghost(href=`/jobs/${job.id}/applications/reports/${view}.pdf`)
-              i.fas.fa-file-pdf
-              |  PDF
+        details.export-native.report-exports
+          summary.btn.btn-primary(style="list-style: none; outline: none;")
+            i.fas.fa-download
+            |  Export
+            i.fas.fa-chevron-down(style="margin-left:6px; font-size: 0.8em;")
+          .export-native-dropdown
+            if view === 'list'
+              a.export-item(href=`/jobs/${job.id}/applications/export.pdf`)
+                i.fas.fa-file-pdf
+                div
+                  strong PDF
+                  span Name, contact and date applied
+              a.export-item(href=`/jobs/${job.id}/applications/export.csv`)
+                i.fas.fa-file-csv
+                div
+                  strong CSV
+                  span Name, contact and date applied
+            else
+              a.export-item(href=`/jobs/${job.id}/applications/reports/${view}.xlsx`)
+                i.fas.fa-file-excel
+                div
+                  strong Excel
+                  span Summary, analysis and each candidate
+              a.export-item(href=`/jobs/${job.id}/applications/reports/${view}.pdf`)
+                i.fas.fa-file-pdf
+                div
+                  strong PDF
+                  span Summary and each candidate
 
       if !people.length
         .report-empty No applicants in this list.
@@ -67,11 +80,12 @@ block content
           table.app-table
             thead
               tr
-                th No.
-                th Applicant
-                th Email
-                th.th-hide-sm Phone
-                th.th-hide-md Applied
+                th.col-no No.
+                th.col-name Applicant
+                th.col-contact Email
+                th.col-phone Phone
+                th.col-date Applied
+                th.col-file Document
             tbody
               each person, index in people
                 tr
@@ -79,37 +93,49 @@ block content
                   td
                     strong= person.fullName
                   td= person.email
-                  td.th-hide-sm= person.phone || '—'
-                  td.th-hide-md= person.applied || '—'
+                  td= person.phone || '—'
+                  td= person.applied || '—'
+                  td
+                    if person.attachmentUrl
+                      a.report-file(href=`/files/resumes/${person.attachmentUrl.split('/').pop()}` target="_blank" rel="noopener")= person.attachmentName || 'View document'
+                    else
+                      span.report-meta No document
       else
         .app-table-wrap
           table.app-table.report-table
             thead
               tr
-                th No.
-                th Applicant
-                th.th-hide-md Score
-                th Judgement
-                th Reason
+                th.col-no No.
+                th.col-name Applicant
+                th.col-contact Contact
+                th.col-date Applied
+                th.col-file Document
+                th.col-score Score
+                th.col-judge Judgement
             tbody
               each person, index in people
-                tr
+                tr.report-person
                   td= index + 1
-                  td.td-applicant
+                  td
                     strong= person.fullName
-                    .report-contact
-                      span= person.email
-                      if person.phone
-                        span= person.phone
-                      if person.applied
-                        span Applied #{person.applied}
-                  td.th-hide-md= person.scoreLabel || '—'
+                  td
+                    div= person.email
+                    if person.phone
+                      .report-meta= person.phone
+                  td= person.applied || '—'
+                  td
+                    if person.attachmentUrl
+                      a.report-file(href=`/files/resumes/${person.attachmentUrl.split('/').pop()}` target="_blank" rel="noopener")= person.attachmentName || 'View document'
+                    else
+                      span.report-meta No document
+                  td= person.scoreLabel || '—'
                   td
                     .report-judge= person.judgement
                     if person.confidence
-                      .report-meta= person.confidence.charAt(0).toUpperCase() + person.confidence.slice(1) + ' confidence'
-                  td.report-reason
-                    p= person.summary
+                      .report-meta= person.confidence.charAt(0).toUpperCase() + person.confidence.slice(1)
+                tr.report-detail
+                  td(colspan="7")
+                    p.report-reason= person.summary
                     if person.documentNote
                       p.report-meta= person.documentNote
                     if person.checklist && person.checklist.length
