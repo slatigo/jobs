@@ -77,44 +77,17 @@ block content
         .report-empty No applicants in this list.
       else if view === 'list'
         .app-table-wrap
-          table.app-table
+          table.app-table.report-table
             thead
               tr
                 th.col-no No.
-                th.col-name Applicant
-                th.col-contact Email
-                th.col-phone Phone
+                th.col-who Applicant
+                th.col-contact Contact
                 th.col-date Applied
                 th.col-file Document
             tbody
               each person, index in people
                 tr
-                  td= index + 1
-                  td
-                    strong= person.fullName
-                  td= person.email
-                  td= person.phone || '—'
-                  td= person.applied || '—'
-                  td
-                    if person.attachmentUrl
-                      a.report-file(href=`/files/resumes/${person.attachmentUrl.split('/').pop()}` target="_blank" rel="noopener")= person.attachmentName || 'View document'
-                    else
-                      span.report-meta No document
-      else
-        .app-table-wrap
-          table.app-table.report-table
-            thead
-              tr
-                th.col-no No.
-                th.col-name Applicant
-                th.col-contact Contact
-                th.col-date Applied
-                th.col-file Document
-                th.col-score Score
-                th.col-judge Judgement
-            tbody
-              each person, index in people
-                tr.report-person
                   td= index + 1
                   td
                     strong= person.fullName
@@ -125,19 +98,48 @@ block content
                   td= person.applied || '—'
                   td
                     if person.attachmentUrl
-                      a.report-file(href=`/files/resumes/${person.attachmentUrl.split('/').pop()}` target="_blank" rel="noopener")= person.attachmentName || 'View document'
+                      a.report-file(href=`/files/resumes/${person.attachmentUrl.split('/').pop()}` target="_blank" rel="noopener" title=person.attachmentName) View document
                     else
                       span.report-meta No document
-                  td= person.scoreLabel || '—'
+      else
+        .app-table-wrap
+          table.app-table.report-table
+            colgroup
+              col.col-no
+              col.col-who
+              col.col-judge
+              col.col-score
+              col.col-reason
+            thead
+              tr
+                th No.
+                th Applicant
+                th Judgement
+                th Score
+                th Reason
+            tbody
+              each person, index in people
+                tr
+                  td.report-no= index + 1
+                  td
+                    strong.report-name= person.fullName
+                    .report-meta= person.email
+                    if person.phone
+                      .report-meta= person.phone
+                    .report-meta= person.applied || '—'
+                    if person.attachmentUrl
+                      a.report-file(href=`/files/resumes/${person.attachmentUrl.split('/').pop()}` target="_blank" rel="noopener" title=person.attachmentName) View document
+                    else
+                      .report-meta No document
                   td
                     .report-judge= person.judgement
                     if person.confidence
                       .report-meta= person.confidence.charAt(0).toUpperCase() + person.confidence.slice(1)
-                tr.report-detail
-                  td(colspan="7")
+                  td.report-score= person.scoreLabel || '—'
+                  td
                     p.report-reason= person.summary
                     if person.documentNote
-                      p.report-meta= person.documentNote
+                      p.report-note= person.documentNote
                     if person.checklist && person.checklist.length
                       details.report-criteria
                         summary Requirement by requirement

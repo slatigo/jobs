@@ -1026,45 +1026,57 @@
   content: " · ";
 }
 .report-judge {
-  font-weight: 600;
+  font-weight: 700;
   white-space: nowrap;
 }
-.report-reason p {
-  margin: 0;
-  line-height: 1.45;
-  font-size: 13px;
-}
 .report-table {
-  table-layout: auto;
+  table-layout: fixed;
+  width: 100%;
 }
-.report-table .col-no { width: 48px; }
-.report-table .col-name { min-width: 180px; }
-.report-table .col-contact { min-width: 220px; }
-.report-table .col-phone { min-width: 140px; }
-.report-table .col-date { width: 120px; white-space: nowrap; }
-.report-table .col-file { min-width: 180px; }
-.report-table .col-score { width: 80px; white-space: nowrap; }
-.report-table .col-judge { width: 110px; }
+.report-table col.col-no { width: 52px; }
+.report-table col.col-who { width: 26%; }
+.report-table col.col-judge { width: 108px; }
+.report-table col.col-score { width: 84px; }
+.report-table th,
 .report-table td {
+  padding: 14px 16px;
   vertical-align: top;
+  text-align: left;
 }
-.report-person td {
+.report-table tbody td {
+  border-bottom: 1px solid var(--gray-200);
+}
+.report-table tbody tr:last-child td {
   border-bottom: none;
-  padding-bottom: 6px;
 }
-.report-detail td {
-  padding-top: 0;
-  background: #f8fafc;
+.report-no,
+.report-score {
+  white-space: nowrap;
+  color: var(--gray-700);
+}
+.report-name {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 14px;
 }
 .report-reason {
-  margin: 0 0 6px;
-  line-height: 1.5;
+  margin: 0;
+  line-height: 1.55;
   font-size: 13.5px;
+  color: var(--gray-800, #1f2937);
+}
+.report-note {
+  margin: 8px 0 0;
+  line-height: 1.45;
+  font-size: 12.5px;
+  color: var(--gray-500);
 }
 .report-file {
+  display: inline-block;
+  margin-top: 6px;
   color: var(--primary);
   font-weight: 600;
-  word-break: break-word;
+  font-size: 13px;
 }
 .report-criteria {
   margin-top: 8px;
